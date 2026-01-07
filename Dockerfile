@@ -1,7 +1,7 @@
 # Multi-stage Docker build for LangChain RAG Learning Project
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.14-slim as builder
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -25,7 +25,7 @@ RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
 # Production stage
-FROM python:3.11-slim as runtime
+FROM python:3.14-slim as runtime
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
