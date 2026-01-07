@@ -1,0 +1,37 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude virtual environment
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - API_RELOAD=true
+    command: ["uvicorn", "src.langchain_rag_learning.api.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - /app/.venv
+    command: ["streamlit", "run", "src/langchain_rag_learning/ui/main.py", "--server.port", "8501", "--server.address", "0.0.0.0", "--server.runOnSave", "true"]
+
+  # Development database with exposed port
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=rag_learning_dev
+
+  # Development Redis with exposed port
+  redis:
+    ports:
+      - "6379:6379"

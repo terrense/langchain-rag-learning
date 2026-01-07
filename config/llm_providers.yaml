@@ -1,0 +1,153 @@
+# LLM Provider Configuration
+# You can easily add new providers or modify existing ones here
+
+# Default provider to use
+default_provider: "deepseek"
+
+# Provider configurations
+providers:
+  # DeepSeek - Cost-effective and powerful
+  deepseek:
+    type: "openai_compatible"
+    name: "DeepSeek"
+    base_url: "https://api.deepseek.com/v1"
+    api_key: "${DEEPSEEK_API_KEY}"  # Set in .env file
+    models:
+      - "deepseek-chat"
+      - "deepseek-coder"
+    default_model: "deepseek-chat"
+    max_tokens: 4096
+    temperature: 0.7
+    enabled: true
+    cost_per_1k_tokens: 0.0014  # Very affordable!
+
+  # OpenAI - Premium option
+  openai:
+    type: "openai"
+    name: "OpenAI"
+    base_url: "https://api.openai.com/v1"
+    api_key: "${OPENAI_API_KEY}"
+    models:
+      - "gpt-4"
+      - "gpt-4-turbo-preview"
+      - "gpt-3.5-turbo"
+      - "gpt-3.5-turbo-16k"
+    default_model: "gpt-3.5-turbo"
+    max_tokens: 4096
+    temperature: 0.7
+    enabled: false  # Disabled by default to save costs
+
+  # Anthropic Claude
+  anthropic:
+    type: "anthropic"
+    name: "Anthropic"
+    base_url: "https://api.anthropic.com"
+    api_key: "${ANTHROPIC_API_KEY}"
+    models:
+      - "claude-3-opus-20240229"
+      - "claude-3-sonnet-20240229"
+      - "claude-3-haiku-20240307"
+    default_model: "claude-3-haiku-20240307"
+    max_tokens: 4096
+    temperature: 0.7
+    enabled: false
+
+  # Zhipu AI (智谱AI) - Chinese provider
+  zhipu:
+    type: "openai_compatible"
+    name: "Zhipu AI"
+    base_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key: "${ZHIPU_API_KEY}"
+    models:
+      - "glm-4"
+      - "glm-3-turbo"
+    default_model: "glm-4"
+    max_tokens: 4096
+    temperature: 0.7
+    enabled: false
+
+  # Moonshot AI (月之暗面)
+  moonshot:
+    type: "openai_compatible"
+    name: "Moonshot AI"
+    base_url: "https://api.moonshot.cn/v1"
+    api_key: "${MOONSHOT_API_KEY}"
+    models:
+      - "moonshot-v1-8k"
+      - "moonshot-v1-32k"
+      - "moonshot-v1-128k"
+    default_model: "moonshot-v1-8k"
+    max_tokens: 4096
+    temperature: 0.7
+    enabled: false
+
+  # Local Ollama - Free local models
+  ollama:
+    type: "ollama"
+    name: "Ollama Local"
+    base_url: "http://localhost:11434"
+    api_key: ""  # No API key needed for local
+    models:
+      - "llama2"
+      - "codellama"
+      - "mistral"
+      - "neural-chat"
+      - "qwen"
+      - "baichuan2"
+    default_model: "llama2"
+    max_tokens: 2048
+    temperature: 0.7
+    enabled: true
+
+  # HuggingFace - Free tier available
+  huggingface:
+    type: "huggingface"
+    name: "HuggingFace"
+    base_url: "https://api-inference.huggingface.co"
+    api_key: "${HUGGINGFACE_API_KEY}"
+    models:
+      - "microsoft/DialoGPT-medium"
+      - "facebook/blenderbot-400M-distill"
+      - "google/flan-t5-large"
+    default_model: "microsoft/DialoGPT-medium"
+    max_tokens: 1024
+    temperature: 0.7
+    enabled: false
+
+# Embedding models configuration
+embeddings:
+  default_provider: "sentence_transformers"
+  
+  providers:
+    openai:
+      type: "openai"
+      api_key: "${OPENAI_API_KEY}"
+      model: "text-embedding-ada-002"
+      enabled: false
+    
+    sentence_transformers:
+      type: "sentence_transformers"
+      model: "all-MiniLM-L6-v2"  # Free and good quality
+      enabled: true
+    
+    huggingface:
+      type: "huggingface"
+      api_key: "${HUGGINGFACE_API_KEY}"
+      model: "sentence-transformers/all-MiniLM-L6-v2"
+      enabled: false
+
+# RAG Configuration
+rag:
+  chunk_size: 1000
+  chunk_overlap: 200
+  retrieval_k: 5
+  rerank_top_k: 3
+  similarity_threshold: 0.7
+
+# System settings
+system:
+  log_level: "INFO"
+  cache_enabled: true
+  cache_ttl: 3600  # 1 hour
+  max_concurrent_requests: 10
+  request_timeout: 30
