@@ -192,7 +192,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 Email: support@example.com
+- 📧 Email: deeplearningman0723@gmail.com
 - 💬 Discord: [Join our community](https://discord.gg/example)
 - 📖 Documentation: [docs.example.com](https://docs.example.com)
 - 🐛 Issues: [GitHub Issues](https://github.com/your-username/langchain-rag-learning/issues)
