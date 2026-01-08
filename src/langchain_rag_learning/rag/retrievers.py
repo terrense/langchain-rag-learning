@@ -1,35 +1,69 @@
-"""Retrieval engines for RAG system including dense, sparse, and hybrid retrievers."""
+"""
+Retrieval engines for RAG (Retrieval-Augmented Generation) system.
 
-import asyncio
-import logging
-import math
-import time
-from abc import ABC, abstractmethod
-from collections import Counter, defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
+This module implements various retrieval strategies for finding relevant documents:
+- Dense retrieval: Uses vector embeddings and semantic similarity
+- Sparse retrieval: Uses keyword-based methods like BM25 and TF-IDF
+- Hybrid retrieval: Combines dense and sparse methods with fusion algorithms
+- Reranking: Improves results using cross-encoder models
 
-import numpy as np
+Technical Overview:
+- Dense retrieval leverages neural embeddings to capture semantic meaning
+- Sparse retrieval uses traditional IR methods for exact keyword matching
+- Hybrid approaches balance semantic understanding with keyword precision
+- Reranking provides final optimization using sophisticated scoring models
+"""
 
-from langchain_rag_learning.core.config import get_settings
-from langchain_rag_learning.core.exceptions import DocumentProcessingError
-from langchain_rag_learning.core.models import DocumentChunk
-from langchain_rag_learning.rag.embeddings import EmbeddingManager, cosine_similarity
-from langchain_rag_learning.rag.vector_store import BaseVectorStore, VectorStoreManager
+# Standard library imports for core functionality
+import asyncio  # Asynchronous programming support for concurrent operations
+import logging  # Logging framework for debugging and monitoring
+import math     # Mathematical functions for scoring algorithms
+import time     # Time utilities for performance measurement
+from abc import ABC, abstractmethod  # Abstract base classes for interface definition
+from collections import Counter, defaultdict  # Data structures for counting and grouping
+from typing import Any, Dict, List, Optional, Tuple, Union  # Type hints for better code clarity
 
+# Third-party imports
+import numpy as np  # Numerical computing library for vector operations
+
+# Internal imports from the RAG learning system
+from langchain_rag_learning.core.config import get_settings  # Configuration management
+from langchain_rag_learning.core.exceptions import DocumentProcessingError  # Custom exceptions
+from langchain_rag_learning.core.models import DocumentChunk  # Data models
+from langchain_rag_learning.rag.embeddings import EmbeddingManager, cosine_similarity  # Embedding utilities
+from langchain_rag_learning.rag.vector_store import BaseVectorStore, VectorStoreManager  # Vector storage
+
+# Initialize logger for this module - helps with debugging and monitoring
 logger = logging.getLogger(__name__)
 
 
 class BaseRetriever(ABC):
-    """Base class for all retrievers."""
+    """
+    Abstract base class for all retrieval implementations.
+    
+    This class defines the common interface that all retrievers must implement.
+    It follows the Strategy pattern, allowing different retrieval algorithms
+    to be used interchangeably.
+    
+    Design Pattern: Strategy Pattern
+    - Encapsulates retrieval algorithms in separate classes
+    - Allows runtime switching between different retrieval strategies
+    - Promotes code reusability and maintainability
+    """
     
     def __init__(self, name: str):
         """
-        Initialize base retriever.
+        Initialize the base retriever with a unique name.
         
         Args:
-            name: Name of the retriever
+            name (str): Unique identifier for this retriever instance.
+                       Used for logging, debugging, and metadata tracking.
+        
+        Technical Note:
+            The name is stored as an instance variable and used throughout
+            the retrieval pipeline for identification and metadata purposes.
         """
-        self.name = name
+        self.name = name  # Store retriever name for identification
     
     @abstractmethod
     async def retrieve(
@@ -40,26 +74,65 @@ class BaseRetriever(ABC):
         **kwargs
     ) -> List[Tuple[DocumentChunk, float]]:
         """
-        Retrieve relevant documents for a query.
+        Abstract method for document retrieval - must be implemented by subclasses.
+        
+        This method defines the core retrieval interface that all concrete
+        retriever implementations must provide.
         
         Args:
-            query: Query string
-            k: Number of documents to retrieve
-            filter_dict: Optional metadata filters
-            **kwargs: Additional retriever-specific parameters
+            query (str): The search query string from the user
+            k (int, optional): Maximum number of documents to retrieve. Defaults to 5.
+            filter_dict (Optional[Dict[str, Any]], optional): 
+                Metadata filters to apply during retrieval. Format: {"key": "value"}
+            **kwargs: Additional retriever-specific parameters that vary by implementation
             
         Returns:
-            List of (DocumentChunk, relevance_score) tuples
+            List[Tuple[DocumentChunk, float]]: List of tuples containing:
+                - DocumentChunk: The retrieved document chunk with content and metadata
+                - float: Relevance score (higher = more relevant)
+                
+        Technical Notes:
+            - Uses async/await for non-blocking I/O operations
+            - Returns tuples for efficient packing of document and score
+            - Scores should be normalized or comparable within retriever type
+            - Filter_dict enables metadata-based filtering (e.g., by document type, date)
         """
-        pass
+        pass  # Must be implemented by concrete subclasses
     
     def get_name(self) -> str:
-        """Get retriever name."""
+        """
+        Get the name of this retriever instance.
+        
+        Returns:
+            str: The retriever's unique name identifier
+            
+        Technical Note:
+            Simple getter method following encapsulation principles.
+            Provides controlled access to the internal name attribute.
+        """
         return self.name
 
 
 class DenseRetriever(BaseRetriever):
-    """Dense retriever using vector similarity search."""
+    """
+    Dense retriever implementation using vector similarity search.
+    
+    This retriever uses neural embeddings to capture semantic meaning and find
+    documents that are conceptually similar to the query, even if they don't
+    share exact keywords.
+    
+    Technical Approach:
+    - Converts queries and documents into high-dimensional vectors (embeddings)
+    - Uses cosine similarity or other distance metrics for relevance scoring
+    - Leverages pre-trained language models for semantic understanding
+    - Excels at finding conceptually related content beyond keyword matching
+    
+    Use Cases:
+    - Semantic search where meaning matters more than exact words
+    - Cross-lingual retrieval with multilingual embeddings
+    - Finding paraphrases and conceptually similar content
+    - Handling synonyms and related concepts automatically
+    """
     
     def __init__(
         self,
@@ -68,16 +141,24 @@ class DenseRetriever(BaseRetriever):
         name: str = "dense_retriever"
     ):
         """
-        Initialize dense retriever.
+        Initialize the dense retriever with required components.
         
         Args:
-            vector_store: Vector store for similarity search
-            embedding_manager: Embedding manager for query embedding
-            name: Name of the retriever
+            vector_store (BaseVectorStore): Storage system for document embeddings.
+                Handles efficient similarity search operations (e.g., Chroma, FAISS).
+            embedding_manager (EmbeddingManager): Manages embedding model operations.
+                Converts text to vectors using various providers (OpenAI, HuggingFace, etc.).
+            name (str, optional): Unique identifier for this retriever. 
+                Defaults to "dense_retriever".
+        
+        Technical Notes:
+            - Vector store must be pre-populated with document embeddings
+            - Embedding manager should use the same model as document embeddings
+            - Different embedding models produce incompatible vector spaces
         """
-        super().__init__(name)
-        self.vector_store = vector_store
-        self.embedding_manager = embedding_manager
+        super().__init__(name)  # Initialize parent class with retriever name
+        self.vector_store = vector_store  # Store reference to vector database
+        self.embedding_manager = embedding_manager  # Store reference to embedding service
     
     async def retrieve(
         self,
@@ -89,59 +170,87 @@ class DenseRetriever(BaseRetriever):
         **kwargs
     ) -> List[Tuple[DocumentChunk, float]]:
         """
-        Retrieve documents using dense vector similarity.
+        Retrieve documents using dense vector similarity search.
+        
+        This method implements the core dense retrieval algorithm:
+        1. Convert query text to embedding vector
+        2. Search vector store for similar document embeddings
+        3. Apply similarity threshold filtering
+        4. Add retrieval metadata to results
         
         Args:
-            query: Query string
-            k: Number of documents to retrieve
-            filter_dict: Optional metadata filters
-            embedding_provider: Embedding provider to use
-            similarity_threshold: Minimum similarity threshold
-            **kwargs: Additional parameters
+            query (str): The search query text to find similar documents for
+            k (int, optional): Maximum number of documents to retrieve. Defaults to 5.
+            filter_dict (Optional[Dict[str, Any]], optional): 
+                Metadata filters for document selection. Defaults to None.
+            embedding_provider (Optional[str], optional): 
+                Specific embedding provider to use. Defaults to None (uses default).
+            similarity_threshold (float, optional): 
+                Minimum similarity score for inclusion. Defaults to 0.0 (no filtering).
+            **kwargs: Additional parameters passed to vector store
             
         Returns:
-            List of (DocumentChunk, similarity_score) tuples
+            List[Tuple[DocumentChunk, float]]: Retrieved documents with similarity scores,
+            sorted by relevance (highest scores first)
+            
+        Raises:
+            DocumentProcessingError: If embedding generation or vector search fails
+            
+        Technical Details:
+            - Similarity scores typically range from 0.0 to 1.0 (cosine similarity)
+            - Higher scores indicate greater semantic similarity
+            - Threshold filtering helps remove low-quality matches
+            - Metadata includes timing and scoring information for analysis
         """
         try:
+            # Record start time for performance measurement
             start_time = time.time()
             
-            # Embed the query
+            # Convert query text to embedding vector using the embedding manager
+            # This is the core of semantic search - transforming text to numerical representation
             query_embedding = await self.embedding_manager.embed_query(
                 query, provider=embedding_provider
             )
             
-            # Perform similarity search
+            # Perform similarity search in the vector store
+            # Vector store handles efficient nearest neighbor search algorithms
             results = await self.vector_store.similarity_search(
-                query_embedding=query_embedding,
-                k=k,
-                filter_dict=filter_dict
+                query_embedding=query_embedding,  # Query vector to match against
+                k=k,  # Number of results to return
+                filter_dict=filter_dict  # Optional metadata filtering
             )
             
-            # Filter by similarity threshold
+            # Apply similarity threshold filtering if specified
+            # This removes results below a minimum quality threshold
             if similarity_threshold > 0:
                 results = [
                     (chunk, score) for chunk, score in results
-                    if score >= similarity_threshold
+                    if score >= similarity_threshold  # Keep only high-quality matches
                 ]
             
-            # Add retrieval metadata
+            # Calculate total retrieval time for performance monitoring
             retrieval_time = time.time() - start_time
             
+            # Add retrieval metadata to each result for debugging and analysis
             for chunk, score in results:
+                # Initialize retrieval_info dictionary if it doesn't exist
                 if 'retrieval_info' not in chunk.metadata:
                     chunk.metadata['retrieval_info'] = {}
                 
+                # Update metadata with retrieval information
                 chunk.metadata['retrieval_info'].update({
-                    'retriever': self.name,
-                    'similarity_score': score,
-                    'retrieval_time': retrieval_time,
-                    'query': query[:100]  # Store truncated query
+                    'retriever': self.name,  # Which retriever was used
+                    'similarity_score': score,  # Numerical similarity score
+                    'retrieval_time': retrieval_time,  # Time taken for retrieval
+                    'query': query[:100]  # Store truncated query for reference
                 })
             
+            # Log successful retrieval for monitoring
             logger.info(f"Dense retrieval found {len(results)} documents in {retrieval_time:.3f}s")
             return results
             
         except Exception as e:
+            # Convert any exception to our custom exception type with context
             raise DocumentProcessingError(f"Dense retrieval failed: {str(e)}")
     
     async def get_query_expansion_terms(
@@ -150,45 +259,97 @@ class DenseRetriever(BaseRetriever):
         expansion_count: int = 5
     ) -> List[str]:
         """
-        Get query expansion terms using semantic similarity.
+        Generate query expansion terms using semantic similarity.
+        
+        Query expansion improves retrieval by adding related terms to the original query.
+        This method uses the semantic understanding of dense retrieval to find
+        conceptually related terms from top-retrieved documents.
+        
+        Algorithm:
+        1. Perform initial retrieval with original query
+        2. Extract text from top-ranked results
+        3. Analyze term frequency in retrieved content
+        4. Filter out common stop words and original query terms
+        5. Return most frequent meaningful terms
         
         Args:
-            query: Original query
-            expansion_count: Number of expansion terms to generate
-            
+            query (str): Original query string to expand
+            expansion_count (int, optional): Number of expansion terms to generate. 
+                Defaults to 5.
+        
         Returns:
-            List of expansion terms
+            List[str]: List of expansion terms that can enhance the original query
+            
+        Technical Notes:
+            - Uses simple frequency-based term extraction (can be enhanced with NLP)
+            - Filters common stop words to focus on meaningful content words
+            - Could be improved with techniques like pseudo-relevance feedback
+            - Expansion terms should be semantically related to original query
         """
         try:
-            # Get initial results
+            # Get initial retrieval results to analyze for expansion terms
             initial_results = await self.retrieve(query, k=10)
             
+            # Return empty list if no results found
             if not initial_results:
                 return []
             
-            # Extract key terms from top results
+            # Extract and combine text from top results for term analysis
+            # Focus on top 3 results as they're most likely to be relevant
             all_text = " ".join([chunk.content for chunk, _ in initial_results[:3]])
             
-            # Simple term extraction (can be enhanced with NLP)
+            # Simple tokenization: split text into words and convert to lowercase
+            # This could be enhanced with proper NLP tokenization
             words = all_text.lower().split()
+            
+            # Count frequency of each word for importance ranking
             word_freq = Counter(words)
             
-            # Filter out common words and get most frequent terms
+            # Define common stop words to filter out
+            # These words are too common to be useful for expansion
             common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+            
+            # Filter and select expansion terms based on criteria:
+            # - Not in common stop words
+            # - Length > 2 characters (avoid short, meaningless words)
+            # - Not already in original query (avoid redundancy)
             expansion_terms = [
                 word for word, freq in word_freq.most_common(expansion_count * 2)
                 if word not in common_words and len(word) > 2 and word not in query.lower()
             ]
             
+            # Return top expansion terms up to requested count
             return expansion_terms[:expansion_count]
             
         except Exception as e:
+            # Log warning but don't fail - expansion is optional enhancement
             logger.warning(f"Query expansion failed: {e}")
-            return []
+            return []  # Return empty list on failure
 
 
 class SparseRetriever(BaseRetriever):
-    """Sparse retriever using keyword-based search (BM25 and TF-IDF)."""
+    """
+    Sparse retriever implementation using keyword-based search algorithms.
+    
+    This retriever uses traditional Information Retrieval (IR) methods like BM25 and TF-IDF
+    to find documents based on exact keyword matches and term frequency statistics.
+    
+    Technical Approach:
+    - Builds inverted index mapping terms to documents containing them
+    - Uses statistical scoring functions (BM25, TF-IDF) for relevance calculation
+    - Excels at finding documents with specific keywords and phrases
+    - Provides interpretable scoring based on term frequency and document frequency
+    
+    Algorithms Supported:
+    - BM25: Best Matching 25, probabilistic ranking function
+    - TF-IDF: Term Frequency-Inverse Document Frequency weighting
+    
+    Use Cases:
+    - Exact keyword matching and phrase search
+    - Domain-specific terminology retrieval
+    - When interpretability of results is important
+    - Complementing semantic search with keyword precision
+    """
     
     def __init__(
         self,
@@ -198,56 +359,95 @@ class SparseRetriever(BaseRetriever):
         b: float = 0.75
     ):
         """
-        Initialize sparse retriever.
+        Initialize sparse retriever with document collection and BM25 parameters.
         
         Args:
-            documents: List of document chunks to index
-            name: Name of the retriever
-            k1: BM25 k1 parameter
-            b: BM25 b parameter
+            documents (List[DocumentChunk]): Collection of document chunks to index.
+                These will be tokenized and indexed for efficient keyword search.
+            name (str, optional): Unique identifier for this retriever. 
+                Defaults to "sparse_retriever".
+            k1 (float, optional): BM25 term frequency saturation parameter. 
+                Controls how quickly term frequency scores saturate. Defaults to 1.2.
+            b (float, optional): BM25 document length normalization parameter.
+                Controls how much document length affects scoring (0=no effect, 1=full effect).
+                Defaults to 0.75.
+        
+        Technical Notes:
+            - k1 typically ranges from 1.0 to 2.0 (1.2 is standard)
+            - b typically ranges from 0.0 to 1.0 (0.75 is standard)
+            - Higher k1 values give more weight to term frequency
+            - Higher b values penalize longer documents more strongly
         """
-        super().__init__(name)
-        self.documents = documents
-        self.k1 = k1
-        self.b = b
+        super().__init__(name)  # Initialize parent class
+        self.documents = documents  # Store document collection
+        self.k1 = k1  # BM25 term frequency parameter
+        self.b = b    # BM25 document length normalization parameter
         
-        # Build inverted index
-        self.inverted_index = {}
-        self.doc_lengths = {}
-        self.avg_doc_length = 0
-        self.doc_frequencies = {}
-        self.total_docs = len(documents)
+        # Initialize data structures for inverted index
+        self.inverted_index = {}  # Maps terms to {doc_id: term_frequency}
+        self.doc_lengths = {}     # Maps doc_id to document length in tokens
+        self.avg_doc_length = 0   # Average document length across collection
+        self.doc_frequencies = {} # Maps terms to number of documents containing them
+        self.total_docs = len(documents)  # Total number of documents in collection
         
+        # Build the inverted index immediately upon initialization
         self._build_index()
     
     def _build_index(self):
-        """Build inverted index for BM25 scoring."""
+        """
+        Build inverted index for efficient keyword-based retrieval.
+        
+        The inverted index is the core data structure for sparse retrieval:
+        - Maps each unique term to the documents containing it
+        - Stores term frequencies for scoring calculations
+        - Calculates document statistics needed for BM25 scoring
+        
+        Index Structure:
+        - inverted_index: {term: {doc_id: frequency}}
+        - doc_lengths: {doc_id: token_count}
+        - doc_frequencies: {term: document_count}
+        
+        Technical Process:
+        1. Tokenize each document into terms
+        2. Count term frequencies within each document
+        3. Build inverted mappings from terms to documents
+        4. Calculate collection-wide statistics (avg length, doc frequencies)
+        """
         logger.info(f"Building sparse index for {len(self.documents)} documents")
         
-        # Tokenize documents and build inverted index
+        # Track total length across all documents for average calculation
         total_length = 0
         
+        # Process each document to build index
         for i, doc in enumerate(self.documents):
-            # Simple tokenization (can be enhanced with proper NLP)
+            # Tokenize document content into individual terms
+            # This converts raw text into searchable tokens
             tokens = self._tokenize(doc.content)
             doc_length = len(tokens)
             
+            # Store document length for BM25 normalization
             self.doc_lengths[i] = doc_length
             total_length += doc_length
             
-            # Count term frequencies in document
+            # Count frequency of each term in this document
+            # Counter creates {term: frequency} mapping efficiently
             term_freq = Counter(tokens)
             
+            # Update inverted index with term frequencies
             for term, freq in term_freq.items():
+                # Initialize term entry if first occurrence
                 if term not in self.inverted_index:
                     self.inverted_index[term] = {}
                 
+                # Store term frequency for this document
                 self.inverted_index[term][i] = freq
         
-        # Calculate average document length
+        # Calculate average document length for BM25 normalization
+        # Prevents bias toward longer or shorter documents
         self.avg_doc_length = total_length / len(self.documents) if self.documents else 0
         
-        # Calculate document frequencies
+        # Calculate document frequencies (DF) for each term
+        # DF = number of documents containing the term (used in IDF calculation)
         for term, doc_dict in self.inverted_index.items():
             self.doc_frequencies[term] = len(doc_dict)
         
@@ -255,75 +455,149 @@ class SparseRetriever(BaseRetriever):
     
     def _tokenize(self, text: str) -> List[str]:
         """
-        Simple tokenization function.
+        Tokenize text into searchable terms using simple regex-based approach.
+        
+        This method converts raw text into a list of normalized tokens suitable
+        for keyword matching. The tokenization strategy significantly impacts
+        retrieval quality and should match the query processing approach.
         
         Args:
-            text: Text to tokenize
+            text (str): Raw text content to tokenize
             
         Returns:
-            List of tokens
+            List[str]: List of normalized tokens (lowercase, filtered)
+            
+        Tokenization Process:
+        1. Convert to lowercase for case-insensitive matching
+        2. Extract word boundaries using regex pattern
+        3. Filter out very short tokens (< 3 characters)
+        4. Remove punctuation and special characters
+        
+        Technical Notes:
+        - Uses regex pattern r'\b\w+\b' to find word boundaries
+        - Filters tokens shorter than 3 characters to reduce noise
+        - Could be enhanced with stemming, lemmatization, or language-specific rules
+        - Should be consistent with query tokenization for accurate matching
         """
-        # Convert to lowercase and split on whitespace and punctuation
+        # Import regex module for pattern matching
         import re
+        
+        # Extract word tokens using regex pattern
+        # \b = word boundary, \w+ = one or more word characters
         tokens = re.findall(r'\b\w+\b', text.lower())
-        return [token for token in tokens if len(token) > 2]  # Filter short tokens
+        
+        # Filter out short tokens that are typically not meaningful
+        # Length > 2 removes articles, prepositions, and abbreviations
+        return [token for token in tokens if len(token) > 2]
     
     def _calculate_bm25_score(self, query_terms: List[str], doc_index: int) -> float:
         """
-        Calculate BM25 score for a document.
+        Calculate BM25 relevance score for a document given query terms.
+        
+        BM25 (Best Matching 25) is a probabilistic ranking function that estimates
+        the relevance of documents to a given search query. It's widely used in
+        search engines and considered state-of-the-art for keyword-based retrieval.
+        
+        BM25 Formula:
+        score = Σ(IDF(qi) * (f(qi,D) * (k1 + 1)) / (f(qi,D) + k1 * (1 - b + b * |D| / avgdl)))
+        
+        Where:
+        - IDF(qi) = log((N - df(qi) + 0.5) / (df(qi) + 0.5))
+        - f(qi,D) = frequency of term qi in document D
+        - |D| = length of document D in tokens
+        - avgdl = average document length in collection
+        - k1, b = tuning parameters
         
         Args:
-            query_terms: List of query terms
-            doc_index: Document index
+            query_terms (List[str]): List of tokenized query terms
+            doc_index (int): Index of document to score
             
         Returns:
-            BM25 score
+            float: BM25 relevance score (higher = more relevant)
+            
+        Technical Details:
+        - IDF component reduces weight of common terms
+        - TF component increases weight of frequent terms with saturation
+        - Length normalization prevents bias toward long/short documents
+        - Smoothing constants (0.5) prevent division by zero
         """
-        score = 0.0
-        doc_length = self.doc_lengths.get(doc_index, 0)
+        score = 0.0  # Initialize cumulative score
+        doc_length = self.doc_lengths.get(doc_index, 0)  # Get document length
         
+        # Calculate score contribution for each query term
         for term in query_terms:
+            # Check if term exists in document
             if term in self.inverted_index and doc_index in self.inverted_index[term]:
-                # Term frequency in document
+                # Get term frequency in this document
                 tf = self.inverted_index[term][doc_index]
                 
-                # Document frequency
+                # Get document frequency (number of docs containing term)
                 df = self.doc_frequencies[term]
                 
-                # IDF calculation
+                # Calculate Inverse Document Frequency (IDF)
+                # Higher IDF for rare terms, lower for common terms
                 idf = math.log((self.total_docs - df + 0.5) / (df + 0.5))
                 
-                # BM25 formula
+                # Calculate BM25 term frequency component with saturation
+                # Numerator: tf * (k1 + 1) - gives weight to term frequency
                 numerator = tf * (self.k1 + 1)
+                
+                # Denominator: tf + k1 * (1 - b + b * doc_length/avg_length)
+                # Provides term frequency saturation and length normalization
                 denominator = tf + self.k1 * (1 - self.b + self.b * (doc_length / self.avg_doc_length))
                 
+                # Add this term's contribution to total score
                 score += idf * (numerator / denominator)
         
         return score
     
     def _calculate_tfidf_score(self, query_terms: List[str], doc_index: int) -> float:
         """
-        Calculate TF-IDF score for a document.
+        Calculate TF-IDF relevance score for a document given query terms.
+        
+        TF-IDF (Term Frequency-Inverse Document Frequency) is a classical
+        information retrieval scoring method that balances term importance
+        within documents against term rarity in the collection.
+        
+        TF-IDF Formula:
+        score = Σ(TF(qi,D) * IDF(qi))
+        
+        Where:
+        - TF(qi,D) = (frequency of qi in D) / (total terms in D)
+        - IDF(qi) = log(total_documents / documents_containing_qi)
         
         Args:
-            query_terms: List of query terms
-            doc_index: Document index
+            query_terms (List[str]): List of tokenized query terms
+            doc_index (int): Index of document to score
             
         Returns:
-            TF-IDF score
+            float: TF-IDF relevance score (higher = more relevant)
+            
+        Technical Details:
+        - TF component: normalized term frequency within document
+        - IDF component: inverse document frequency across collection
+        - Simpler than BM25 but less sophisticated in handling term saturation
+        - Good baseline method for keyword-based retrieval
         """
-        score = 0.0
-        doc_length = self.doc_lengths.get(doc_index, 0)
+        score = 0.0  # Initialize cumulative score
+        doc_length = self.doc_lengths.get(doc_index, 0)  # Get document length
         
+        # Calculate score contribution for each query term
         for term in query_terms:
+            # Check if term exists in document
             if term in self.inverted_index and doc_index in self.inverted_index[term]:
-                # Term frequency
+                # Calculate normalized Term Frequency (TF)
+                # Dividing by doc_length normalizes for document length
                 tf = self.inverted_index[term][doc_index] / doc_length if doc_length > 0 else 0
                 
-                # Inverse document frequency
+                # Get document frequency for IDF calculation
                 df = self.doc_frequencies[term]
+                
+                # Calculate Inverse Document Frequency (IDF)
+                # log(N/df) - higher for rare terms, lower for common terms
                 idf = math.log(self.total_docs / df) if df > 0 else 0
                 
+                # Add TF * IDF contribution to total score
                 score += tf * idf
         
         return score
@@ -338,50 +612,78 @@ class SparseRetriever(BaseRetriever):
         **kwargs
     ) -> List[Tuple[DocumentChunk, float]]:
         """
-        Retrieve documents using sparse retrieval.
+        Retrieve documents using sparse keyword-based search methods.
+        
+        This method implements the main sparse retrieval algorithm:
+        1. Tokenize the input query into searchable terms
+        2. Optionally expand query with related terms
+        3. Score all documents using selected algorithm (BM25 or TF-IDF)
+        4. Apply metadata filters if specified
+        5. Sort results by relevance score and return top-k
         
         Args:
-            query: Query string
-            k: Number of documents to retrieve
-            filter_dict: Optional metadata filters
-            scoring_method: Scoring method ('bm25' or 'tfidf')
-            query_expansion: Whether to perform query expansion
-            **kwargs: Additional parameters
+            query (str): Search query string to find matching documents
+            k (int, optional): Maximum number of documents to retrieve. Defaults to 5.
+            filter_dict (Optional[Dict[str, Any]], optional): 
+                Metadata filters for document selection. Defaults to None.
+            scoring_method (str, optional): Scoring algorithm to use.
+                Options: "bm25" (default) or "tfidf". Defaults to "bm25".
+            query_expansion (bool, optional): Whether to expand query with related terms.
+                Defaults to False.
+            **kwargs: Additional parameters for future extensions
             
         Returns:
-            List of (DocumentChunk, relevance_score) tuples
+            List[Tuple[DocumentChunk, float]]: Retrieved documents with relevance scores,
+            sorted by score in descending order (most relevant first)
+            
+        Raises:
+            DocumentProcessingError: If retrieval process fails
+            ValueError: If unknown scoring method is specified
+            
+        Technical Notes:
+        - BM25 generally performs better than TF-IDF for most use cases
+        - Query expansion can improve recall but may reduce precision
+        - Metadata filtering is applied after scoring for efficiency
+        - Scores are not normalized between different scoring methods
         """
         try:
+            # Record start time for performance measurement
             start_time = time.time()
             
-            # Tokenize query
+            # Tokenize query using same method as document indexing
+            # Consistency in tokenization is crucial for accurate matching
             query_terms = self._tokenize(query)
             
+            # Return empty results if no valid query terms
             if not query_terms:
                 return []
             
             # Perform query expansion if requested
+            # This adds related terms to improve recall
             if query_expansion:
                 expanded_terms = await self._expand_query(query_terms)
                 query_terms.extend(expanded_terms)
-                query_terms = list(set(query_terms))  # Remove duplicates
+                query_terms = list(set(query_terms))  # Remove duplicates using set conversion
             
-            # Calculate scores for all documents
+            # Initialize list to store document scores
             doc_scores = []
             
+            # Score each document in the collection
             for i, doc in enumerate(self.documents):
-                # Apply metadata filters
+                # Apply metadata filters first to skip irrelevant documents
                 if filter_dict:
                     match = True
+                    # Check each filter condition
                     for key, value in filter_dict.items():
                         if key not in doc.metadata or doc.metadata[key] != value:
                             match = False
-                            break
+                            break  # Exit early if any condition fails
                     
+                    # Skip this document if it doesn't match filters
                     if not match:
                         continue
                 
-                # Calculate score based on method
+                # Calculate relevance score based on selected method
                 if scoring_method == "bm25":
                     score = self._calculate_bm25_score(query_terms, i)
                 elif scoring_method == "tfidf":
@@ -389,85 +691,161 @@ class SparseRetriever(BaseRetriever):
                 else:
                     raise ValueError(f"Unknown scoring method: {scoring_method}")
                 
+                # Only include documents with positive scores (contain query terms)
                 if score > 0:
                     doc_scores.append((doc, score))
             
-            # Sort by score and take top k
+            # Sort documents by score in descending order (highest scores first)
+            # Lambda function extracts score (second element) for sorting
             doc_scores.sort(key=lambda x: x[1], reverse=True)
+            
+            # Take only top-k results
             results = doc_scores[:k]
             
-            # Add retrieval metadata
+            # Calculate total retrieval time for performance monitoring
             retrieval_time = time.time() - start_time
             
+            # Add retrieval metadata to each result for analysis and debugging
             for chunk, score in results:
+                # Initialize retrieval_info if not present
                 if 'retrieval_info' not in chunk.metadata:
                     chunk.metadata['retrieval_info'] = {}
                 
+                # Store comprehensive retrieval information
                 chunk.metadata['retrieval_info'].update({
-                    'retriever': self.name,
-                    'relevance_score': score,
-                    'scoring_method': scoring_method,
-                    'retrieval_time': retrieval_time,
-                    'query_terms': query_terms,
-                    'query': query[:100]
+                    'retriever': self.name,  # Retriever identification
+                    'relevance_score': score,  # Numerical relevance score
+                    'scoring_method': scoring_method,  # Algorithm used
+                    'retrieval_time': retrieval_time,  # Performance timing
+                    'query_terms': query_terms,  # Processed query terms
+                    'query': query[:100]  # Original query (truncated)
                 })
             
+            # Log successful retrieval for monitoring
             logger.info(f"Sparse retrieval found {len(results)} documents in {retrieval_time:.3f}s")
             return results
             
         except Exception as e:
+            # Convert any exception to our custom exception type
             raise DocumentProcessingError(f"Sparse retrieval failed: {str(e)}")
     
     async def _expand_query(self, query_terms: List[str]) -> List[str]:
         """
-        Expand query with related terms.
+        Expand query with related terms using co-occurrence analysis.
+        
+        This method implements a simple query expansion technique based on
+        term co-occurrence patterns in the document collection. It finds
+        terms that frequently appear together with the original query terms.
+        
+        Algorithm:
+        1. For each query term, find all documents containing it
+        2. Extract all other terms from those documents
+        3. Count co-occurrence frequencies
+        4. Return most frequently co-occurring terms
         
         Args:
-            query_terms: Original query terms
+            query_terms (List[str]): Original tokenized query terms
             
         Returns:
-            List of expansion terms
+            List[str]: List of expansion terms to add to the query
+            
+        Technical Notes:
+        - Uses simple co-occurrence counting (could be enhanced with PMI, etc.)
+        - Limits to top 3 expansion terms to avoid query drift
+        - Excludes original query terms to avoid redundancy
+        - Could be improved with more sophisticated relevance feedback methods
         """
         expansion_terms = []
         
-        # Simple co-occurrence based expansion
+        # Dictionary to count term co-occurrences
+        # defaultdict automatically initializes missing keys to 0
         term_cooccurrence = defaultdict(int)
         
+        # Analyze co-occurrence for each query term
         for term in query_terms:
+            # Check if term exists in our index
             if term in self.inverted_index:
-                # Find documents containing this term
+                # Get all documents containing this term
                 docs_with_term = self.inverted_index[term].keys()
                 
-                # Find other terms in these documents
+                # Analyze other terms in these documents
                 for doc_idx in docs_with_term:
+                    # Tokenize document content to find co-occurring terms
                     doc_tokens = self._tokenize(self.documents[doc_idx].content)
+                    
+                    # Count occurrences of other terms
                     for token in doc_tokens:
+                        # Exclude the original term and existing query terms
                         if token != term and token not in query_terms:
                             term_cooccurrence[token] += 1
         
-        # Get top co-occurring terms
+        # Select top co-occurring terms as expansion candidates
+        # Sort by frequency and take top 3 to avoid over-expansion
         expansion_terms = [
-            term for term, count in sorted(term_cooccurrence.items(), key=lambda x: x[1], reverse=True)[:3]
+            term for term, count in sorted(
+                term_cooccurrence.items(), 
+                key=lambda x: x[1], 
+                reverse=True
+            )[:3]  # Limit to top 3 expansion terms
         ]
         
         return expansion_terms
     
     def update_index(self, new_documents: List[DocumentChunk]):
         """
-        Update the index with new documents.
+        Update the inverted index with new documents.
+        
+        This method allows dynamic addition of new documents to the retrieval
+        system without rebuilding the entire index from scratch. However,
+        for simplicity, it currently rebuilds the complete index.
         
         Args:
-            new_documents: New documents to add to the index
+            new_documents (List[DocumentChunk]): New document chunks to add
+            
+        Technical Notes:
+        - Currently rebuilds entire index for simplicity
+        - Could be optimized for incremental updates in production systems
+        - Maintains consistency of all index statistics after update
+        - Logs the number of new documents added for monitoring
         """
+        # Add new documents to existing collection
         self.documents.extend(new_documents)
+        
+        # Update total document count
         self.total_docs = len(self.documents)
+        
+        # Rebuild entire index (could be optimized for incremental updates)
         self._build_index()
         
+        # Log successful update for monitoring
         logger.info(f"Updated sparse index with {len(new_documents)} new documents")
 
 
 class HybridRetriever(BaseRetriever):
-    """Hybrid retriever combining dense and sparse retrieval methods."""
+    """
+    Hybrid retriever that combines dense and sparse retrieval methods.
+    
+    This retriever leverages the strengths of both dense (semantic) and sparse (keyword)
+    retrieval approaches to provide more comprehensive and robust search results.
+    It implements various fusion algorithms to combine results from both methods.
+    
+    Technical Approach:
+    - Executes dense and sparse retrieval in parallel for efficiency
+    - Applies fusion algorithms to combine and rank results
+    - Balances semantic understanding with keyword precision
+    - Provides configurable weighting between retrieval methods
+    
+    Fusion Methods Supported:
+    - RRF (Reciprocal Rank Fusion): Rank-based combination method
+    - Weighted: Score-based combination with configurable weights
+    - Max: Takes maximum score from either method
+    
+    Benefits:
+    - Improved recall by combining different retrieval paradigms
+    - Robustness against query variations and document types
+    - Flexibility to adjust balance between semantic and keyword matching
+    - Better performance across diverse query types and domains
+    """
     
     def __init__(
         self,
@@ -478,24 +856,37 @@ class HybridRetriever(BaseRetriever):
         sparse_weight: float = 0.3
     ):
         """
-        Initialize hybrid retriever.
+        Initialize hybrid retriever with component retrievers and fusion weights.
         
         Args:
-            dense_retriever: Dense retriever instance
-            sparse_retriever: Sparse retriever instance
-            name: Name of the retriever
-            dense_weight: Weight for dense retrieval scores
-            sparse_weight: Weight for sparse retrieval scores
-        """
-        super().__init__(name)
-        self.dense_retriever = dense_retriever
-        self.sparse_retriever = sparse_retriever
-        self.dense_weight = dense_weight
-        self.sparse_weight = sparse_weight
+            dense_retriever (DenseRetriever): Dense retriever instance for semantic search
+            sparse_retriever (SparseRetriever): Sparse retriever instance for keyword search
+            name (str, optional): Unique identifier for this retriever. 
+                Defaults to "hybrid_retriever".
+            dense_weight (float, optional): Weight for dense retrieval scores in fusion.
+                Should be between 0.0 and 1.0. Defaults to 0.7.
+            sparse_weight (float, optional): Weight for sparse retrieval scores in fusion.
+                Should be between 0.0 and 1.0. Defaults to 0.3.
         
-        # Validate weights
+        Technical Notes:
+            - Weights should sum to 1.0 for proper normalization
+            - Higher dense_weight favors semantic similarity
+            - Higher sparse_weight favors keyword matching
+            - Default 0.7/0.3 split generally works well for most use cases
+        """
+        super().__init__(name)  # Initialize parent class
+        self.dense_retriever = dense_retriever    # Store dense retriever reference
+        self.sparse_retriever = sparse_retriever  # Store sparse retriever reference
+        self.dense_weight = dense_weight          # Weight for dense scores
+        self.sparse_weight = sparse_weight        # Weight for sparse scores
+        
+        # Validate that weights sum to approximately 1.0
+        # Use small epsilon (1e-6) to handle floating-point precision issues
         if abs(dense_weight + sparse_weight - 1.0) > 1e-6:
-            logger.warning(f"Weights don't sum to 1.0: {dense_weight} + {sparse_weight} = {dense_weight + sparse_weight}")
+            logger.warning(
+                f"Weights don't sum to 1.0: {dense_weight} + {sparse_weight} = "
+                f"{dense_weight + sparse_weight}"
+            )
     
     async def retrieve(
         self,
@@ -508,34 +899,64 @@ class HybridRetriever(BaseRetriever):
         **kwargs
     ) -> List[Tuple[DocumentChunk, float]]:
         """
-        Retrieve documents using hybrid approach.
+        Retrieve documents using hybrid approach with configurable fusion methods.
+        
+        This method implements the core hybrid retrieval algorithm:
+        1. Execute dense and sparse retrieval in parallel
+        2. Apply selected fusion method to combine results
+        3. Return top-k fused results with metadata
         
         Args:
-            query: Query string
-            k: Number of documents to retrieve
-            filter_dict: Optional metadata filters
-            fusion_method: Fusion method ('rrf', 'weighted', 'max')
-            rrf_k: RRF parameter k
-            normalize_scores: Whether to normalize scores before fusion
-            **kwargs: Additional parameters
+            query (str): Search query string
+            k (int, optional): Number of final results to return. Defaults to 5.
+            filter_dict (Optional[Dict[str, Any]], optional): 
+                Metadata filters applied to both retrievers. Defaults to None.
+            fusion_method (str, optional): Method for combining results.
+                Options: "rrf", "weighted", "max". Defaults to "rrf".
+            rrf_k (int, optional): Parameter for RRF fusion algorithm. 
+                Higher values reduce rank differences. Defaults to 60.
+            normalize_scores (bool, optional): Whether to normalize scores before fusion.
+                Recommended for weighted and max fusion. Defaults to True.
+            **kwargs: Additional parameters passed to component retrievers
             
         Returns:
-            List of (DocumentChunk, fused_score) tuples
+            List[Tuple[DocumentChunk, float]]: Fused results sorted by combined score
+            
+        Raises:
+            DocumentProcessingError: If retrieval or fusion process fails
+            ValueError: If unknown fusion method is specified
+            
+        Technical Details:
+        - Retrieves k*2 results from each method to ensure sufficient candidates
+        - Parallel execution improves performance significantly
+        - Different fusion methods have different characteristics:
+          * RRF: Robust, rank-based, good for different score scales
+          * Weighted: Score-based, requires score normalization
+          * Max: Takes best score from either method
         """
         try:
+            # Record start time for performance measurement
             start_time = time.time()
             
-            # Retrieve from both retrievers in parallel
+            # Execute both retrievers in parallel for efficiency
+            # asyncio.create_task() enables concurrent execution
+            # Retrieve more results (k*2) to have sufficient candidates for fusion
             dense_task = asyncio.create_task(
-                self.dense_retriever.retrieve(query, k=k*2, filter_dict=filter_dict, **kwargs)
+                self.dense_retriever.retrieve(
+                    query, k=k*2, filter_dict=filter_dict, **kwargs
+                )
             )
             sparse_task = asyncio.create_task(
-                self.sparse_retriever.retrieve(query, k=k*2, filter_dict=filter_dict, **kwargs)
+                self.sparse_retriever.retrieve(
+                    query, k=k*2, filter_dict=filter_dict, **kwargs
+                )
             )
             
+            # Wait for both retrievers to complete and get results
+            # asyncio.gather() waits for all tasks and returns results in order
             dense_results, sparse_results = await asyncio.gather(dense_task, sparse_task)
             
-            # Fuse results based on method
+            # Apply selected fusion method to combine results
             if fusion_method == "rrf":
                 fused_results = self._reciprocal_rank_fusion(dense_results, sparse_results, rrf_k)
             elif fusion_method == "weighted":
@@ -545,30 +966,35 @@ class HybridRetriever(BaseRetriever):
             else:
                 raise ValueError(f"Unknown fusion method: {fusion_method}")
             
-            # Take top k results
+            # Take only top-k results from fused list
             final_results = fused_results[:k]
             
-            # Add retrieval metadata
+            # Calculate total retrieval time including fusion
             retrieval_time = time.time() - start_time
             
+            # Add comprehensive metadata to results for analysis
             for chunk, score in final_results:
+                # Initialize retrieval_info if not present
                 if 'retrieval_info' not in chunk.metadata:
                     chunk.metadata['retrieval_info'] = {}
                 
+                # Store hybrid retrieval metadata
                 chunk.metadata['retrieval_info'].update({
-                    'retriever': self.name,
-                    'fusion_method': fusion_method,
-                    'hybrid_score': score,
-                    'retrieval_time': retrieval_time,
-                    'dense_weight': self.dense_weight,
-                    'sparse_weight': self.sparse_weight,
-                    'query': query[:100]
+                    'retriever': self.name,           # Hybrid retriever identification
+                    'fusion_method': fusion_method,   # Fusion algorithm used
+                    'hybrid_score': score,            # Final fused score
+                    'retrieval_time': retrieval_time, # Total processing time
+                    'dense_weight': self.dense_weight,   # Dense component weight
+                    'sparse_weight': self.sparse_weight, # Sparse component weight
+                    'query': query[:100]              # Original query (truncated)
                 })
             
+            # Log successful hybrid retrieval
             logger.info(f"Hybrid retrieval found {len(final_results)} documents in {retrieval_time:.3f}s")
             return final_results
             
         except Exception as e:
+            # Convert any exception to our custom exception type
             raise DocumentProcessingError(f"Hybrid retrieval failed: {str(e)}")
     
     def _reciprocal_rank_fusion(
@@ -578,39 +1004,62 @@ class HybridRetriever(BaseRetriever):
         k: int = 60
     ) -> List[Tuple[DocumentChunk, float]]:
         """
-        Perform Reciprocal Rank Fusion (RRF).
+        Perform Reciprocal Rank Fusion (RRF) to combine ranked lists.
+        
+        RRF is a robust fusion method that combines ranked lists without requiring
+        score normalization. It's particularly effective when the component
+        retrievers use different scoring scales or distributions.
+        
+        RRF Formula:
+        RRF_score = Σ(1 / (k + rank_i))
+        
+        Where:
+        - k is a constant (typically 60) that controls the impact of rank differences
+        - rank_i is the rank of the document in retriever i (1-indexed)
+        - Documents not appearing in a list get rank = infinity (score = 0)
         
         Args:
-            dense_results: Results from dense retriever
-            sparse_results: Results from sparse retriever
-            k: RRF parameter
+            dense_results (List[Tuple[DocumentChunk, float]]): Results from dense retriever
+            sparse_results (List[Tuple[DocumentChunk, float]]): Results from sparse retriever
+            k (int, optional): RRF parameter controlling rank impact. Defaults to 60.
             
         Returns:
-            Fused results sorted by RRF score
+            List[Tuple[DocumentChunk, float]]: Fused results sorted by RRF score
+            
+        Technical Notes:
+        - RRF is robust to different score scales and distributions
+        - Higher k values reduce the impact of rank differences
+        - Documents appearing in both lists get higher scores
+        - Method is symmetric and doesn't favor either retriever
         """
-        # Create rank mappings
+        # Create rank mappings for both result lists
+        # Rank is 1-indexed (first result has rank 1)
         dense_ranks = {chunk.id: rank + 1 for rank, (chunk, _) in enumerate(dense_results)}
         sparse_ranks = {chunk.id: rank + 1 for rank, (chunk, _) in enumerate(sparse_results)}
         
-        # Collect all unique chunks
+        # Collect all unique document chunks from both result sets
         all_chunks = {}
         for chunk, _ in dense_results + sparse_results:
-            all_chunks[chunk.id] = chunk
+            all_chunks[chunk.id] = chunk  # Use chunk.id as key to avoid duplicates
         
-        # Calculate RRF scores
+        # Calculate RRF scores for all unique documents
         rrf_scores = {}
         for chunk_id, chunk in all_chunks.items():
             rrf_score = 0.0
             
+            # Add RRF contribution from dense retriever if document appears there
             if chunk_id in dense_ranks:
                 rrf_score += 1.0 / (k + dense_ranks[chunk_id])
             
+            # Add RRF contribution from sparse retriever if document appears there
             if chunk_id in sparse_ranks:
                 rrf_score += 1.0 / (k + sparse_ranks[chunk_id])
             
+            # Store final RRF score for this document
             rrf_scores[chunk_id] = rrf_score
         
-        # Sort by RRF score
+        # Sort documents by RRF score in descending order
+        # Higher RRF scores indicate better combined relevance
         sorted_results = [
             (all_chunks[chunk_id], score)
             for chunk_id, score in sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
