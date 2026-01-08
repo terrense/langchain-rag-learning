@@ -1,14 +1,14 @@
 """Utility functions and classes for the RAG learning system."""
 
-import asyncio
+import asyncio  # Async programming support for concurrent operations
 import functools
 import hashlib
-import json
-import logging
-import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+import json  # JSON parsing and serialization
+import logging  # Structured logging for debugging and monitoring
+import time  # Time utilities for performance measurement
+from datetime import datetime, timedelta  # Time utilities for performance measurement
+from pathlib import Path  # Modern cross-platform path handling
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union  # Type hints for better code documentation
 from uuid import uuid4
 
 from .exceptions import RAGException, SystemError
@@ -29,7 +29,7 @@ def generate_hash(content: str) -> str:
 
 def safe_filename(filename: str) -> str:
     """Create a safe filename by removing/replacing invalid characters."""
-    import re
+    import re  # Regular expressions for text processing
     # Remove or replace invalid characters
     safe_name = re.sub(r'[<>:"/\\|?*]', '_', filename)
     # Remove leading/trailing spaces and dots
@@ -106,20 +106,32 @@ class Timer:
     """Context manager for timing operations."""
     
     def __init__(self, name: str = "Operation"):
+        """
+          Init   function implementation.
+        """
         self.name = name
         self.start_time = None
         self.end_time = None
         self.duration = None
     
     def __enter__(self):
+        """
+          Enter   function implementation.
+        """
         self.start_time = time.time()
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+          Exit   function implementation.
+        """
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
     
     def __str__(self):
+        """
+          Str   function implementation.
+        """
         if self.duration is not None:
             return f"{self.name}: {format_duration(self.duration)}"
         return f"{self.name}: Not completed"
@@ -129,20 +141,32 @@ class AsyncTimer:
     """Async context manager for timing operations."""
     
     def __init__(self, name: str = "Operation"):
+        """
+          Init   function implementation.
+        """
         self.name = name
         self.start_time = None
         self.end_time = None
         self.duration = None
     
     async def __aenter__(self):
+        """
+        Async   aenter   function implementation.
+        """
         self.start_time = time.time()
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        Async   aexit   function implementation.
+        """
         self.end_time = time.time()
         self.duration = self.end_time - self.start_time
     
     def __str__(self):
+        """
+          Str   function implementation.
+        """
         if self.duration is not None:
             return f"{self.name}: {format_duration(self.duration)}"
         return f"{self.name}: Not completed"
@@ -158,8 +182,14 @@ def retry(
     """Decorator for retrying functions with exponential backoff."""
     
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        """
+        Decorator function implementation.
+        """
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> T:
+            """
+            Wrapper function implementation.
+            """
             last_exception = None
             current_delay = delay
             
@@ -194,8 +224,14 @@ def async_retry(
     """Decorator for retrying async functions with exponential backoff."""
     
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        """
+        Decorator function implementation.
+        """
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> T:
+            """
+            Async wrapper function implementation.
+            """
             last_exception = None
             current_delay = delay
             
@@ -238,8 +274,14 @@ class CircuitBreaker:
         self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
     
     def __call__(self, func: Callable[..., T]) -> Callable[..., T]:
+        """
+          Call   function implementation.
+        """
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> T:
+            """
+            Wrapper function implementation.
+            """
             if self.state == "OPEN":
                 if self._should_attempt_reset():
                     self.state = "HALF_OPEN"
@@ -281,6 +323,9 @@ class RateLimiter:
     """Token bucket rate limiter."""
     
     def __init__(self, rate: float, capacity: int):
+        """
+          Init   function implementation.
+        """
         self.rate = rate  # tokens per second
         self.capacity = capacity
         self.tokens = capacity
@@ -314,6 +359,9 @@ class Cache:
     """Simple in-memory cache with TTL support."""
     
     def __init__(self, default_ttl: float = 3600.0):
+        """
+          Init   function implementation.
+        """
         self.default_ttl = default_ttl
         self._cache: Dict[str, Dict[str, Any]] = {}
     
@@ -368,6 +416,9 @@ class ProgressTracker:
     """Track progress of long-running operations."""
     
     def __init__(self, total: int, description: str = "Processing"):
+        """
+          Init   function implementation.
+        """
         self.total = total
         self.description = description
         self.current = 0
@@ -468,6 +519,9 @@ class BatchProcessor:
     """Process items in batches with progress tracking."""
     
     def __init__(self, batch_size: int = 10, max_workers: int = 4):
+        """
+          Init   function implementation.
+        """
         self.batch_size = batch_size
         self.max_workers = max_workers
     

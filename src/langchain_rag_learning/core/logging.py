@@ -1,12 +1,12 @@
 """Structured logging configuration for the RAG learning system."""
 
-import json
-import logging
-import logging.handlers
-import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Optional
+import json  # JSON parsing and serialization
+import logging  # Structured logging for debugging and monitoring
+import logging.handlers  # Structured logging for debugging and monitoring
+import sys  # System-specific parameters and functions
+from datetime import datetime  # Time utilities for performance measurement
+from pathlib import Path  # Modern cross-platform path handling
+from typing import Any, Dict, Optional  # Type hints for better code documentation
 
 from .config import get_settings
 
@@ -52,6 +52,9 @@ class RAGLogger:
     """Enhanced logger for RAG system with structured logging."""
     
     def __init__(self, name: str):
+        """
+          Init   function implementation.
+        """
         self.logger = logging.getLogger(name)
         self._setup_logger()
     
@@ -244,6 +247,9 @@ class LoggerManager:
     """Manage multiple loggers for different components."""
     
     def __init__(self):
+        """
+          Init   function implementation.
+        """
         self._loggers: Dict[str, RAGLogger] = {}
     
     def get_logger(self, name: str) -> RAGLogger:
@@ -306,11 +312,17 @@ class LogContext:
     """Context manager for adding context to logs."""
     
     def __init__(self, logger: RAGLogger, **context):
+        """
+          Init   function implementation.
+        """
         self.logger = logger
         self.context = context
         self.original_logger = None
     
     def __enter__(self):
+        """
+          Enter   function implementation.
+        """
         # Store original logger methods
         self.original_methods = {}
         for method_name in ['debug', 'info', 'warning', 'error', 'critical']:
@@ -318,7 +330,13 @@ class LogContext:
             
             # Create wrapped method that includes context
             def create_wrapped_method(original_method):
+                """
+                Create Wrapped Method function implementation.
+                """
                 def wrapped_method(message: str, **kwargs):
+                    """
+                    Wrapped Method function implementation.
+                    """
                     merged_kwargs = {**self.context, **kwargs}
                     return original_method(message, **merged_kwargs)
                 return wrapped_method
@@ -328,6 +346,9 @@ class LogContext:
         return self.logger
     
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+          Exit   function implementation.
+        """
         # Restore original methods
         for method_name, original_method in self.original_methods.items():
             setattr(self.logger, method_name, original_method)

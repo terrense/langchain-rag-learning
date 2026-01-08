@@ -1,51 +1,123 @@
-"""Document processing module for parsing and extracting text from various file formats."""
+"""
+Document processing module for parsing and extracting text from various file formats.
 
-import logging
-import mimetypes
-import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+This module provides comprehensive document processing capabilities:
+- Multi-format support (PDF, Word, HTML, Markdown, plain text)
+- Metadata extraction and preservation
+- Text cleaning and normalization
+- Error handling and recovery
+- Async processing for better performance
 
-from langchain_rag_learning.core.exceptions import DocumentProcessingError
-from langchain_rag_learning.core.models import Document, DocumentChunk
+Architecture:
+- Strategy pattern for different file format parsers
+- Factory pattern for parser selection
+- Template method for common processing steps
+- Error handling with custom exceptions
 
+Supported Formats:
+- PDF: Using PyMuPDF for robust PDF text extraction
+- Word: DOCX and DOC files via python-docx
+- HTML: BeautifulSoup for web content parsing
+- Markdown: Native markdown processing
+- Plain text: UTF-8 text files
+"""
+
+import logging  # Structured logging for debugging and monitoring  # Structured logging for debugging and monitoring
+import mimetypes  # MIME type detection for file format identification
+import re  # Regular expressions for text processing and cleaning  # Regular expressions for text processing
+from pathlib import Path  # Modern cross-platform path handling  # Modern cross-platform path handling
+from typing import Any, Dict, List, Optional, Tuple  # Type hints for better code documentation  # Type hints for better code documentation
+
+# Import project-specific modules
+from langchain_rag_learning.core.exceptions import DocumentProcessingError  # Custom exceptions  # LangChain framework for LLM applications
+from langchain_rag_learning.core.models import Document, DocumentChunk  # Data models  # LangChain framework for LLM applications
+
+# Initialize logger for this module
 logger = logging.getLogger(__name__)
 
 
 class DocumentProcessor:
-    """Main document processor that handles multiple file formats."""
+    """
+    Main document processor that handles multiple file formats.
+    
+    This class implements the Strategy pattern to handle different document types
+    through specialized parser classes. It provides a unified interface for
+    processing various file formats while maintaining extensibility.
+    
+    Design Patterns:
+    - Strategy Pattern: Different parsers for different file types
+    - Factory Pattern: Parser selection based on file type
+    - Template Method: Common processing workflow
+    
+    Features:
+    - Automatic file type detection
+    - Metadata extraction and preservation
+    - Text cleaning and normalization
+    - Error handling and recovery
+    - Async processing support
+    """
     
     def __init__(self):
-        """Initialize the document processor with format-specific parsers."""
+        """
+        Initialize the document processor with format-specific parsers.
+        
+        Creates a registry of parser instances for different file formats.
+        Each parser implements the same interface but handles format-specific
+        extraction logic.
+        
+        Parser Registry:
+        - PDF: PyMuPDF-based parser for PDF documents
+        - Word: python-docx parser for DOCX/DOC files
+        - Text: Simple UTF-8 text file parser
+        - Markdown: Markdown-aware text parser
+        - HTML: BeautifulSoup-based HTML parser
+        """
+        # Dictionary mapping file extensions to parser instances
+        # This implements the Strategy pattern for different file types
         self.parsers = {
-            'pdf': PDFParser(),
-            'docx': WordParser(),
-            'doc': WordParser(),
-            'txt': TextParser(),
-            'md': MarkdownParser(),
-            'markdown': MarkdownParser(),
-            'html': HTMLParser(),
-            'htm': HTMLParser()
+            'pdf': PDFParser(),           # PDF document parser
+            'docx': WordParser(),         # Microsoft Word (new format)
+            'doc': WordParser(),          # Microsoft Word (legacy format)
+            'txt': TextParser(),          # Plain text files
+            'md': MarkdownParser(),       # Markdown files
+            'markdown': MarkdownParser(), # Alternative markdown extension
+            'html': HTMLParser(),         # HTML web pages
+            'htm': HTMLParser()           # Alternative HTML extension
         }
-        self.metadata_extractor = MetadataExtractor()
-        self.text_cleaner = TextCleaner()
+        # Utility classes for document processing pipeline
+        self.metadata_extractor = MetadataExtractor()  # Extracts document metadata
+        self.text_cleaner = TextCleaner()              # Cleans and normalizes text
     
     async def process_document(self, file_path: str, document: Document) -> Tuple[str, Dict[str, Any]]:
         """
         Process a document and extract text content and metadata.
         
+        This method implements the main document processing workflow:
+        1. Determine file type from extension and MIME type
+        2. Select appropriate parser based on file type
+        3. Extract raw text content using format-specific parser
+        4. Clean and normalize the extracted text
+        5. Extract metadata (title, author, creation date, etc.)
+        6. Return processed text and metadata
+        
         Args:
-            file_path: Path to the document file
-            document: Document model instance
+            file_path: Absolute or relative path to the document file
+            document: Document model instance containing file information
             
         Returns:
-            Tuple of (extracted_text, metadata)
+            Tuple containing:
+            - extracted_text (str): Cleaned and normalized text content
+            - metadata (Dict[str, Any]): Document metadata and properties
             
         Raises:
-            DocumentProcessingError: If processing fails
+            DocumentProcessingError: If file cannot be processed due to:
+                - Unsupported file format
+                - File access permissions
+                - Corrupted file content
+                - Parser-specific errors
         """
         try:
-            # Determine file type
+            # Step 1: Determine file type using multiple detection methods
             file_type = self._get_file_type(file_path, document.file_type)
             
             # Get appropriate parser

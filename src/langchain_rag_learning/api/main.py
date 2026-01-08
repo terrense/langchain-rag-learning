@@ -1,64 +1,120 @@
-"""FastAPI main application."""
+"""
+FastAPI main application for the LangChain RAG Learning Platform.
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Dict, Any, List
-import sys
-import os
+This module implements a production-ready REST API using FastAPI framework:
+- Async request handling for high performance
+- Automatic API documentation generation
+- Request/response validation with Pydantic
+- Error handling and HTTP status codes
+- CORS middleware for web browser compatibility
+- Dependency injection for clean architecture
 
-# Add src to path for imports
+API Endpoints:
+- GET /: Root endpoint with basic information
+- GET /health: Health check for monitoring
+- GET /config: Current configuration status
+- POST /query: Main RAG query endpoint
+- GET /providers: List available LLM providers
+
+Technical Features:
+- ASGI (Asynchronous Server Gateway Interface)
+- OpenAPI/Swagger documentation
+- Pydantic models for data validation
+- Structured error responses
+- Graceful fallback mechanisms
+"""
+
+from fastapi import FastAPI, HTTPException  # FastAPI framework and HTTP exceptions  # FastAPI framework for REST API
+from fastapi.middleware.cors import CORSMiddleware  # Cross-Origin Resource Sharing  # FastAPI framework for REST API
+from pydantic import BaseModel  # Data validation and serialization  # Data validation and serialization
+from typing import Dict, Any, List  # Type hints for better code documentation  # Type hints for better code documentation
+import sys  # System-specific parameters and functions  # System-specific parameters and functions
+import os   # Operating system interface  # Operating system interface
+
+# Add src directory to Python path for module imports
+# This allows importing from the project's source directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
+# Try to import project configuration modules with fallback handling
 try:
-    from langchain_rag_learning.core.config import get_settings, get_llm_config
+    from langchain_rag_learning.core.config import get_settings, get_llm_config  # LangChain framework for LLM applications
 except ImportError as e:
     print(f"Import error: {e}")
-    # Fallback for basic functionality
+    # Fallback mock functions for basic functionality when imports fail
     def get_settings():
+        """Mock settings class for fallback functionality."""
         class MockSettings:
-            API_HOST = "0.0.0.0"
-            API_PORT = 8000
+            """
+            MockSettings class implementation.
+            """
+            API_HOST = "0.0.0.0"  # Default host for all interfaces
+            API_PORT = 8000       # Default HTTP port
         return MockSettings()
     
     def get_llm_config():
+        """Mock LLM configuration for fallback functionality."""
         class MockLLMConfig:
+            """
+            MockLLMConfig class implementation.
+            """
             def get_enabled_providers(self):
-                return ["deepseek", "ollama"]
+                """Return default enabled providers."""
+                return ["deepseek", "ollama"]  # Cost-effective options
             def get_default_provider(self):
-                return "deepseek"
+                """Return default provider."""
+                return "deepseek"  # Most affordable for learning
         return MockLLMConfig()
 
+# Initialize FastAPI application with metadata for documentation
 app = FastAPI(
-    title="LangChain RAG Learning API",
+    title="LangChain RAG Learning API",  # API title shown in documentation
     description="A comprehensive learning platform for LangChain and RAG technologies",
-    version="0.1.0"
+    version="0.1.0"  # Semantic versioning
 )
 
-# CORS middleware
+# Configure CORS (Cross-Origin Resource Sharing) middleware
+# CORS allows web browsers to make requests from different domains
+# This is essential for web applications that need to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],        # Allow requests from any origin (use specific domains in production)
+    allow_credentials=True,     # Allow cookies and authentication headers
+    allow_methods=["*"],        # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],        # Allow all request headers
 )
 
-# Pydantic models
+# Pydantic models for request/response validation and documentation
+# These models automatically validate incoming data and generate API documentation
+
 class HealthResponse(BaseModel):
-    status: str
-    message: str
+    """
+    Response model for health check endpoints.
+    
+    Pydantic automatically validates the response data and generates
+    OpenAPI schema documentation for the API.
+    """
+    status: str   # Health status (e.g., "healthy", "unhealthy")
+    message: str  # Descriptive message about the system state
     version: str
 
 class ConfigResponse(BaseModel):
+    """
+    ConfigResponse class implementation.
+    """
     enabled_providers: List[str]
     default_provider: str
 
 class QueryRequest(BaseModel):
+    """
+    QueryRequest class implementation.
+    """
     question: str
     provider: str = "deepseek"
 
 class QueryResponse(BaseModel):
+    """
+    QueryResponse class implementation.
+    """
     answer: str
     provider: str
     sources: List[str] = []

@@ -15,23 +15,23 @@ Technical Overview:
 """
 
 # Standard library imports for core functionality
-import asyncio  # Asynchronous programming support for concurrent operations
-import logging  # Logging framework for debugging and monitoring
+import asyncio  # Asynchronous programming support for concurrent operations  # Async programming support for concurrent operations
+import logging  # Logging framework for debugging and monitoring  # Structured logging for debugging and monitoring
 import math     # Mathematical functions for scoring algorithms
-import time     # Time utilities for performance measurement
+import time     # Time utilities for performance measurement  # Time utilities for performance measurement
 from abc import ABC, abstractmethod  # Abstract base classes for interface definition
-from collections import Counter, defaultdict  # Data structures for counting and grouping
-from typing import Any, Dict, List, Optional, Tuple, Union  # Type hints for better code clarity
+from collections import Counter, defaultdict  # Data structures for counting and grouping  # Regular expressions for text processing
+from typing import Any, Dict, List, Optional, Tuple, Union  # Type hints for better code clarity  # Type hints for better code documentation
 
 # Third-party imports
-import numpy as np  # Numerical computing library for vector operations
+import numpy as np  # Numerical computing library for vector operations  # Numerical computing library
 
 # Internal imports from the RAG learning system
-from langchain_rag_learning.core.config import get_settings  # Configuration management
-from langchain_rag_learning.core.exceptions import DocumentProcessingError  # Custom exceptions
-from langchain_rag_learning.core.models import DocumentChunk  # Data models
-from langchain_rag_learning.rag.embeddings import EmbeddingManager, cosine_similarity  # Embedding utilities
-from langchain_rag_learning.rag.vector_store import BaseVectorStore, VectorStoreManager  # Vector storage
+from langchain_rag_learning.core.config import get_settings  # Configuration management  # LangChain framework for LLM applications
+from langchain_rag_learning.core.exceptions import DocumentProcessingError  # Custom exceptions  # LangChain framework for LLM applications
+from langchain_rag_learning.core.models import DocumentChunk  # Data models  # LangChain framework for LLM applications
+from langchain_rag_learning.rag.embeddings import EmbeddingManager, cosine_similarity  # Embedding utilities  # LangChain framework for LLM applications
+from langchain_rag_learning.rag.vector_store import BaseVectorStore, VectorStoreManager  # Vector storage  # LangChain framework for LLM applications
 
 # Initialize logger for this module - helps with debugging and monitoring
 logger = logging.getLogger(__name__)
@@ -480,7 +480,7 @@ class SparseRetriever(BaseRetriever):
         - Should be consistent with query tokenization for accurate matching
         """
         # Import regex module for pattern matching
-        import re
+        import re  # Regular expressions for text processing
         
         # Extract word tokens using regex pattern
         # \b = word boundary, \w+ = one or more word characters
@@ -1249,7 +1249,7 @@ class Reranker:
             return
         
         try:
-            from sentence_transformers import CrossEncoder
+            from sentence_transformers import CrossEncoder  # HuggingFace transformers for NLP models
             
             loop = asyncio.get_event_loop()
             self.model = await loop.run_in_executor(
@@ -1309,6 +1309,9 @@ class Reranker:
             loop = asyncio.get_event_loop()
             
             async def _predict_batch(pairs_batch):
+                """
+                Async  predict batch function implementation.
+                """
                 return await loop.run_in_executor(
                     None,
                     lambda: self.model.predict(pairs_batch)

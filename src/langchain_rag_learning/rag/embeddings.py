@@ -1,17 +1,17 @@
 """Vector embedding module for document vectorization and similarity search."""
 
-import asyncio
+import asyncio  # Async programming support for concurrent operations
 import hashlib
-import logging
-import time
+import logging  # Structured logging for debugging and monitoring
+import time  # Time utilities for performance measurement
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union  # Type hints for better code documentation
 
-import numpy as np
+import numpy as np  # Numerical computing library
 
-from langchain_rag_learning.core.config import get_settings
-from langchain_rag_learning.core.exceptions import DocumentProcessingError
-from langchain_rag_learning.core.models import DocumentChunk
+from langchain_rag_learning.core.config import get_settings  # LangChain framework for LLM applications
+from langchain_rag_learning.core.exceptions import DocumentProcessingError  # LangChain framework for LLM applications
+from langchain_rag_learning.core.models import DocumentChunk  # LangChain framework for LLM applications
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +188,7 @@ class HuggingFaceEmbeddingProvider(BaseEmbeddingProvider):
     async def _initialize_model(self):
         """Initialize HuggingFace model."""
         try:
-            from sentence_transformers import SentenceTransformer
+            from sentence_transformers import SentenceTransformer  # HuggingFace transformers for NLP models
             
             self._model = SentenceTransformer(self.model_name, device=self.device)
             
@@ -275,7 +275,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
     def _is_cuda_available(self) -> bool:
         """Check if CUDA is available."""
         try:
-            import torch
+            import torch  # PyTorch for deep learning
             return torch.cuda.is_available()
         except ImportError:
             return False
@@ -283,8 +283,8 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
     async def _initialize_model(self):
         """Initialize local model."""
         try:
-            from transformers import AutoTokenizer, AutoModel
-            import torch
+            from transformers import AutoTokenizer, AutoModel  # HuggingFace transformers for NLP models
+            import torch  # PyTorch for deep learning
             
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self._model = AutoModel.from_pretrained(self.model_name)
@@ -312,7 +312,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
     
     def _mean_pooling(self, model_output, attention_mask):
         """Apply mean pooling to get sentence embeddings."""
-        import torch
+        import torch  # PyTorch for deep learning
         
         token_embeddings = model_output[0]  # First element contains all token embeddings
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
@@ -323,11 +323,14 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
         await self._load_model()
         
         try:
-            import torch
+            import torch  # PyTorch for deep learning
             
             loop = asyncio.get_event_loop()
             
             def _embed_batch(batch_texts):
+                """
+                 Embed Batch function implementation.
+                """
                 with torch.no_grad():
                     encoded_input = self.tokenizer(
                         batch_texts,

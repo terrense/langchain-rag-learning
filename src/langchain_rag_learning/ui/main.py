@@ -1,9 +1,9 @@
 """Streamlit main application."""
 
-import streamlit as st
-import requests
-import sys
-import os
+import streamlit as st  # Regular expressions for text processing
+import requests  # Regular expressions for text processing
+import sys  # System-specific parameters and functions
+import os  # Operating system interface
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))

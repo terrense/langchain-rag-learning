@@ -1,6 +1,6 @@
 """Custom exceptions for the LangChain RAG learning system."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional  # Type hints for better code documentation
 
 
 class RAGException(Exception):

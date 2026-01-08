@@ -1,19 +1,19 @@
 """Vector storage and retrieval system for document embeddings."""
 
-import json
-import logging
-import os
+import json  # JSON parsing and serialization
+import logging  # Structured logging for debugging and monitoring
+import os  # Operating system interface
 import pickle
 from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from pathlib import Path  # Modern cross-platform path handling
+from typing import Any, Dict, List, Optional, Tuple, Union  # Type hints for better code documentation
 
-import numpy as np
+import numpy as np  # Numerical computing library
 
-from langchain_rag_learning.core.config import get_settings
-from langchain_rag_learning.core.exceptions import DocumentProcessingError
-from langchain_rag_learning.core.models import DocumentChunk
-from langchain_rag_learning.rag.embeddings import batch_cosine_similarity
+from langchain_rag_learning.core.config import get_settings  # LangChain framework for LLM applications
+from langchain_rag_learning.core.exceptions import DocumentProcessingError  # LangChain framework for LLM applications
+from langchain_rag_learning.core.models import DocumentChunk  # LangChain framework for LLM applications
+from langchain_rag_learning.rag.embeddings import batch_cosine_similarity  # LangChain framework for LLM applications
 
 logger = logging.getLogger(__name__)
 

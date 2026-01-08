@@ -1,13 +1,13 @@
 """Monitoring and metrics collection for the RAG learning system."""
 
-import asyncio
-import time
+import asyncio  # Async programming support for concurrent operations
+import time  # Time utilities for performance measurement
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from datetime import datetime, timedelta  # Time utilities for performance measurement
+from typing import Any, Callable, Dict, List, Optional, Union  # Type hints for better code documentation
 from dataclasses import dataclass, field
 
-from .logging import get_logger
+from .logging import get_logger  # Structured logging for debugging and monitoring
 from .utils import Timer, AsyncTimer
 
 logger = get_logger('monitoring')
@@ -38,6 +38,9 @@ class MetricsCollector:
     """Collect and store metrics for the RAG system."""
     
     def __init__(self, max_points_per_metric: int = 10000):
+        """
+          Init   function implementation.
+        """
         self.max_points_per_metric = max_points_per_metric
         self._metrics: Dict[str, deque] = defaultdict(lambda: deque(maxlen=max_points_per_metric))
         self._counters: Dict[str, float] = defaultdict(float)
@@ -145,6 +148,9 @@ class PerformanceMonitor:
     """Monitor system performance and resource usage."""
     
     def __init__(self, metrics_collector: MetricsCollector):
+        """
+          Init   function implementation.
+        """
         self.metrics = metrics_collector
         self._monitoring = False
         self._monitor_task = None
@@ -223,6 +229,9 @@ class RAGMetrics:
     """Specific metrics for RAG operations."""
     
     def __init__(self, metrics_collector: MetricsCollector):
+        """
+          Init   function implementation.
+        """
         self.metrics = metrics_collector
     
     def record_query(
@@ -306,8 +315,14 @@ class RAGMetrics:
 def timed_operation(metric_name: str, labels: Optional[Dict[str, str]] = None):
     """Decorator to time operations and record metrics."""
     def decorator(func: Callable):
+        """
+        Decorator function implementation.
+        """
         if asyncio.iscoroutinefunction(func):
             async def async_wrapper(*args, **kwargs):
+                """
+                Async async wrapper function implementation.
+                """
                 async with AsyncTimer() as timer:
                     try:
                         result = await func(*args, **kwargs)
@@ -320,6 +335,9 @@ def timed_operation(metric_name: str, labels: Optional[Dict[str, str]] = None):
             return async_wrapper
         else:
             def sync_wrapper(*args, **kwargs):
+                """
+                Sync Wrapper function implementation.
+                """
                 with Timer() as timer:
                     try:
                         result = func(*args, **kwargs)
@@ -337,6 +355,9 @@ class HealthChecker:
     """Health check system for monitoring service status."""
     
     def __init__(self):
+        """
+          Init   function implementation.
+        """
         self._checks: Dict[str, Callable[[], bool]] = {}
         self._last_results: Dict[str, bool] = {}
         self._last_check_time: Dict[str, datetime] = {}

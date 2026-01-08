@@ -1,49 +1,79 @@
 """Prompt engineering templates for RAG queries and other LLM tasks."""
 
-import json
+import json  # JSON parsing and serialization
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # Type hints for better code documentation
 from enum import Enum
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path  # Modern cross-platform path handling
 
 try:
-    from langchain.prompts import PromptTemplate, ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
-    from langchain.schema import BaseMessage
+    from langchain.prompts import PromptTemplate, ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate  # LangChain framework for LLM applications
+    from langchain.schema import BaseMessage  # LangChain framework for LLM applications
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
     
     # Fallback implementations
     class PromptTemplate:
+        """
+        PromptTemplate class implementation.
+        """
         def __init__(self, template: str, input_variables: List[str]):
+            """
+              Init   function implementation.
+            """
             self.template = template
             self.input_variables = input_variables
         
         def format(self, **kwargs) -> str:
+            """
+            Format function implementation.
+            """
             return self.template.format(**kwargs)
     
     class ChatPromptTemplate:
+        """
+        ChatPromptTemplate class implementation.
+        """
         @classmethod
         def from_messages(cls, messages):
+            """
+            From Messages function implementation.
+            """
             return cls()
     
     class SystemMessagePromptTemplate:
+        """
+        SystemMessagePromptTemplate class implementation.
+        """
         @classmethod
         def from_template(cls, template):
+            """
+            From Template function implementation.
+            """
             return cls()
     
     class HumanMessagePromptTemplate:
+        """
+        HumanMessagePromptTemplate class implementation.
+        """
         @classmethod
         def from_template(cls, template):
+            """
+            From Template function implementation.
+            """
             return cls()
     
     class BaseMessage:
+        """
+        BaseMessage class implementation.
+        """
         pass
 
-from ..core.config import get_settings
-from ..core.logging import get_logger
-from ..core.exceptions import ConfigurationError
+from ..core.config import get_settings  # Regular expressions for text processing
+from ..core.logging import get_logger  # Structured logging for debugging and monitoring
+from ..core.exceptions import ConfigurationError  # Regular expressions for text processing
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -91,6 +121,9 @@ class BasePromptTemplate(ABC):
     """Base class for prompt templates."""
     
     def __init__(self, config: PromptConfig):
+        """
+          Init   function implementation.
+        """
         self.config = config
         self.template = PromptTemplate(
             template=config.template,
@@ -141,6 +174,9 @@ class PromptTemplateManager:
     """Manager for prompt templates with multi-language support."""
     
     def __init__(self):
+        """
+          Init   function implementation.
+        """
         self.templates: Dict[str, Dict[str, BasePromptTemplate]] = {}
         self.default_language = Language.ENGLISH
         
@@ -496,6 +532,9 @@ class PromptBuilder:
     """Builder class for constructing complex prompts."""
     
     def __init__(self, template_manager: PromptTemplateManager = None):
+        """
+          Init   function implementation.
+        """
         self.template_manager = template_manager or template_manager
         self.components = []
         self.variables = {}

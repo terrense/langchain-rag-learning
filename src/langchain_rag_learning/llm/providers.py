@@ -1,50 +1,99 @@
-"""LLM provider implementations for different services."""
+"""
+LLM provider implementations for different AI services.
 
-import asyncio
-import json
-import time
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+This module implements the provider pattern to support multiple LLM services:
+- OpenAI GPT models (GPT-3.5, GPT-4)
+- Anthropic Claude models
+- HuggingFace transformers (local and API)
+- Local models via Ollama
+- Custom OpenAI-compatible APIs (DeepSeek, etc.)
 
+Architecture:
+- Abstract base class defines common interface
+- Concrete implementations for each provider
+- Factory pattern for provider instantiation
+- Async/await for non-blocking I/O operations
+- Error handling and retry mechanisms
+"""
+
+import asyncio  # Async programming support for concurrent operations  # Async programming support for concurrent operations
+import json    # JSON parsing for API responses  # JSON parsing and serialization
+import time    # Time utilities for performance measurement  # Time utilities for performance measurement
+from abc import ABC, abstractmethod  # Abstract base class support
+from typing import Any, Dict, List, Optional, Union  # Type hints for better code documentation  # Type hints for better code documentation
+
+# Try to import aiohttp for async HTTP requests
+# aiohttp provides non-blocking HTTP client functionality
 try:
-    import aiohttp
+    import aiohttp  # Async HTTP client for non-blocking requests
     AIOHTTP_AVAILABLE = True
 except ImportError:
     AIOHTTP_AVAILABLE = False
 
+# Try to import LangChain components for LLM integration
+# LangChain provides unified interfaces for different LLM providers
 try:
-    from langchain.llms import OpenAI
-    from langchain.chat_models import ChatOpenAI, ChatAnthropic
-    from langchain.llms import HuggingFacePipeline
-    from langchain.callbacks.manager import CallbackManagerForLLMRun
+    from langchain.llms import OpenAI  # OpenAI LLM wrapper  # LangChain framework for LLM applications
+    from langchain.chat_models import ChatOpenAI, ChatAnthropic  # Chat model wrappers  # LangChain framework for LLM applications
+    from langchain.llms import HuggingFacePipeline  # Local HuggingFace model support  # LangChain framework for LLM applications
+    from langchain.callbacks.manager import CallbackManagerForLLMRun  # Callback system  # LangChain framework for LLM applications
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
 
+# Try to import HuggingFace transformers for local model execution
+# Transformers library provides pre-trained models and tokenizers
 try:
-    from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
-    import torch
+    from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM  # HuggingFace transformers for NLP models
+    import torch  # PyTorch for deep learning operations  # PyTorch for deep learning
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
-from ..core.config import get_settings
-from ..core.exceptions import LLMError, ConfigurationError
-from ..core.logging import get_logger
-from ..core.models import LLMProvider, LLMResponse
+# Import project-specific modules
+from ..core.config import get_settings  # Configuration management  # Regular expressions for text processing
+from ..core.exceptions import LLMError, ConfigurationError  # Custom exception classes  # Regular expressions for text processing
+from ..core.logging import get_logger  # Structured logging  # Structured logging for debugging and monitoring
+from ..core.models import LLMProvider, LLMResponse  # Data models  # Regular expressions for text processing
 
+# Initialize logger for this module with structured logging
 logger = get_logger(__name__)
+# Get application settings (cached for performance via lru_cache)
 settings = get_settings()
 
 
 class BaseLLMProvider(ABC):
-    """Base class for all LLM providers."""
+    """
+    Abstract base class for all LLM providers.
+    
+    This class defines the common interface that all LLM providers must implement.
+    It follows the Template Method pattern, providing a consistent API while
+    allowing each provider to implement its specific functionality.
+    
+    Design Patterns Used:
+    - Abstract Base Class: Enforces interface compliance
+    - Template Method: Common initialization and error handling
+    - Strategy Pattern: Different providers implement same interface
+    """
     
     def __init__(self, model_name: str, **kwargs):
-        self.model_name = model_name
-        self.config = kwargs
-        self.provider_type = None
-        self._client = None
+        """
+        Initialize the LLM provider with configuration.
+        
+        Args:
+            model_name: Name of the specific model to use (e.g., "gpt-3.5-turbo")
+            **kwargs: Additional configuration parameters specific to each provider
+            
+        Instance Variables:
+        - model_name: The specific model identifier
+        - config: Dictionary of provider-specific configuration
+        - provider_type: Enum identifying the provider type
+        - _client: Private attribute for the underlying client connection
+        """
+        self.model_name = model_name  # Store the model identifier
+        self.config = kwargs  # Store all additional configuration parameters
+        self.provider_type = None  # Will be set by concrete implementations
+        self._client = None  # Private client instance (lazy initialization)
         
     @abstractmethod
     async def generate(
@@ -92,6 +141,9 @@ class OpenAIProvider(BaseLLMProvider):
     """OpenAI LLM provider implementation."""
     
     def __init__(self, model_name: str = "gpt-3.5-turbo", **kwargs):
+        """
+          Init   function implementation.
+        """
         super().__init__(model_name, **kwargs)
         self.provider_type = LLMProvider.OPENAI
         self.api_key = kwargs.get('api_key') or settings.OPENAI_API_KEY
@@ -209,6 +261,9 @@ class AnthropicProvider(BaseLLMProvider):
     """Anthropic Claude LLM provider implementation."""
     
     def __init__(self, model_name: str = "claude-3-sonnet-20240229", **kwargs):
+        """
+          Init   function implementation.
+        """
         super().__init__(model_name, **kwargs)
         self.provider_type = LLMProvider.ANTHROPIC
         self.api_key = kwargs.get('api_key') or settings.ANTHROPIC_API_KEY
@@ -320,6 +375,9 @@ class HuggingFaceProvider(BaseLLMProvider):
     """HuggingFace transformers LLM provider implementation."""
     
     def __init__(self, model_name: str = "microsoft/DialoGPT-medium", **kwargs):
+        """
+          Init   function implementation.
+        """
         super().__init__(model_name, **kwargs)
         self.provider_type = LLMProvider.HUGGINGFACE
         self.api_key = kwargs.get('api_key') or settings.HUGGINGFACE_API_KEY
@@ -525,6 +583,9 @@ class DeepSeekProvider(BaseLLMProvider):
     """DeepSeek LLM provider implementation."""
     
     def __init__(self, model_name: str = "deepseek-chat", **kwargs):
+        """
+          Init   function implementation.
+        """
         super().__init__(model_name, **kwargs)
         self.provider_type = LLMProvider.DEEPSEEK
         self.api_key = kwargs.get('api_key') or settings.DEEPSEEK_API_KEY
@@ -675,6 +736,9 @@ class LocalProvider(BaseLLMProvider):
     """Local model provider using Ollama or similar local inference servers."""
     
     def __init__(self, model_name: str = "llama2", **kwargs):
+        """
+          Init   function implementation.
+        """
         super().__init__(model_name, **kwargs)
         self.provider_type = LLMProvider.LOCAL
         self.base_url = kwargs.get('base_url', 'http://localhost:11434')

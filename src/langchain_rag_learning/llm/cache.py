@@ -1,21 +1,21 @@
 """LLM response caching system."""
 
 import hashlib
-import json
+import json  # JSON parsing and serialization
 import pickle
-import time
-from typing import Any, Dict, Optional, Union
-from datetime import datetime, timedelta
+import time  # Time utilities for performance measurement
+from typing import Any, Dict, Optional, Union  # Type hints for better code documentation
+from datetime import datetime, timedelta  # Time utilities for performance measurement
 
 try:
-    import aioredis
+    import aioredis  # Regular expressions for text processing
     AIOREDIS_AVAILABLE = True
 except ImportError:
     AIOREDIS_AVAILABLE = False
 
-from ..core.config import get_settings
-from ..core.logging import get_logger
-from ..core.models import LLMResponse
+from ..core.config import get_settings  # Regular expressions for text processing
+from ..core.logging import get_logger  # Structured logging for debugging and monitoring
+from ..core.models import LLMResponse  # Regular expressions for text processing
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -25,6 +25,9 @@ class LLMCache:
     """Cache for LLM responses to reduce API calls and improve performance."""
     
     def __init__(self, redis_url: Optional[str] = None, ttl: Optional[int] = None):
+        """
+          Init   function implementation.
+        """
         self.redis_url = redis_url or settings.REDIS_URL
         self.ttl = ttl or settings.llm_cache_ttl
         self.redis_client = None
@@ -281,6 +284,9 @@ class CacheManager:
     """Manager for different cache strategies."""
     
     def __init__(self):
+        """
+          Init   function implementation.
+        """
         self.caches: Dict[str, LLMCache] = {}
         self.default_cache = LLMCache()
     
@@ -334,11 +340,20 @@ class CacheDecorator:
     """Decorator for caching function results."""
     
     def __init__(self, cache: Optional[LLMCache] = None, ttl: Optional[int] = None):
+        """
+          Init   function implementation.
+        """
         self.cache = cache or cache_manager.get_cache()
         self.ttl = ttl
     
     def __call__(self, func):
+        """
+          Call   function implementation.
+        """
         async def wrapper(*args, **kwargs):
+            """
+            Async wrapper function implementation.
+            """
             # Generate cache key from function name and arguments
             cache_key_data = {
                 'function': func.__name__,

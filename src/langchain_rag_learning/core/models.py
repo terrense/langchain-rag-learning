@@ -1,30 +1,48 @@
 """Core data models for the LangChain RAG learning system."""
 
-from datetime import datetime
+from datetime import datetime  # Time utilities for performance measurement
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # Type hints for better code documentation
 from uuid import UUID, uuid4
 
 try:
-    from pydantic import BaseModel, Field, validator
+    from pydantic import BaseModel, Field, validator  # Data validation and serialization
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
     
     # Fallback implementations
     class BaseModel:
+        """
+        BaseModel class implementation.
+        """
         def __init__(self, **kwargs):
+            """
+              Init   function implementation.
+            """
             for key, value in kwargs.items():
                 setattr(self, key, value)
         
         def dict(self):
+            """
+            Dict function implementation.
+            """
             return self.__dict__
     
     def Field(default=None, **kwargs):
+        """
+        Field function implementation.
+        """
         return default
     
     def validator(field_name, **kwargs):
+        """
+        Validator function implementation.
+        """
         def decorator(func):
+            """
+            Decorator function implementation.
+            """
             return func
         return decorator
 
@@ -65,6 +83,9 @@ class BaseEntity(BaseModel):
     """Base entity with common fields."""
     
     def __init__(self, **kwargs):
+        """
+          Init   function implementation.
+        """
         if PYDANTIC_AVAILABLE:
             super().__init__(**kwargs)
         else:
@@ -90,6 +111,9 @@ class User(BaseEntity):
     """User model for the learning system."""
     
     def __init__(self, username: str, email: str, full_name: Optional[str] = None, 
+        """
+          Init   function implementation.
+        """
                  learning_level: UserLevel = UserLevel.BEGINNER, **kwargs):
         if PYDANTIC_AVAILABLE:
             super().__init__(
@@ -329,6 +353,9 @@ class LLMResponse(BaseModel):
     """LLM response model."""
     
     def __init__(self, content: str, model_name: str, provider: LLMProvider, 
+        """
+          Init   function implementation.
+        """
                  response_time: float, usage: Dict[str, int] = None, 
                  metadata: Dict[str, Any] = None, **kwargs):
         if PYDANTIC_AVAILABLE:

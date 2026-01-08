@@ -1,12 +1,12 @@
 """Text splitting and chunking module for document processing."""
 
-import logging
-import re
+import logging  # Structured logging for debugging and monitoring
+import re  # Regular expressions for text processing
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple  # Type hints for better code documentation
 
-from langchain_rag_learning.core.exceptions import DocumentProcessingError
-from langchain_rag_learning.core.models import Document, DocumentChunk
+from langchain_rag_learning.core.exceptions import DocumentProcessingError  # LangChain framework for LLM applications
+from langchain_rag_learning.core.models import Document, DocumentChunk  # LangChain framework for LLM applications
 
 logger = logging.getLogger(__name__)
 

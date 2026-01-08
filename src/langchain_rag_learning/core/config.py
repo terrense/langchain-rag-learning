@@ -1,90 +1,188 @@
-"""Configuration management for the LangChain RAG Learning project."""
+"""
+Configuration management for the LangChain RAG Learning project.
 
-import os
+This module provides a flexible configuration system that supports:
+- Environment variable loading via .env files
+- YAML-based LLM provider configuration  
+- Dynamic provider switching and management
+- Validation and error handling
+
+Technical Features:
+- Pydantic for data validation and settings management
+- YAML parsing for complex configuration structures
+- Environment variable substitution in YAML files
+- Caching for performance optimization
+"""
+
+import os  # Operating system interface
+
+# Try to import functools.lru_cache for performance optimization
+# lru_cache provides memoization (caching) for function results
 try:
     from functools import lru_cache
     FUNCTOOLS_AVAILABLE = True
 except ImportError:
+    # Fallback decorator if functools is not available
     FUNCTOOLS_AVAILABLE = False
     def lru_cache():
+        """Fallback decorator that does nothing if lru_cache is unavailable."""
         def decorator(func):
+            """
+            Decorator function implementation.
+            """
             return func
         return decorator
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+from pathlib import Path  # Modern cross-platform path handling  # Modern cross-platform path handling
+from typing import Optional, List, Dict, Any, Union  # Type hints for better code documentation  # Type hints for better code documentation
+
+# Try to import Pydantic for data validation and settings management
+# Pydantic provides automatic validation, serialization, and documentation
 try:
-    from pydantic_settings import BaseSettings
-    from pydantic import Field, validator
+    from pydantic_settings import BaseSettings  # Modern Pydantic settings import  # Data validation and serialization
+    from pydantic import Field, validator  # Field definitions and custom validators  # Data validation and serialization
     PYDANTIC_AVAILABLE = True
 except ImportError:
+    # Fallback to older Pydantic import structure
     try:
-        from pydantic import BaseSettings, Field, validator
+        from pydantic import BaseSettings, Field, validator  # Data validation and serialization
         PYDANTIC_AVAILABLE = True
     except ImportError:
-        # Fallback for when pydantic is not available
+        # Complete fallback for when Pydantic is not available
         PYDANTIC_AVAILABLE = False
         
         class BaseSettings:
+            """Fallback BaseSettings class when Pydantic is unavailable."""
             def __init__(self, **kwargs):
+                """
+                  Init   function implementation.
+                """
+                # Simple attribute assignment for basic functionality
                 for key, value in kwargs.items():
                     setattr(self, key, value)
         
         def Field(default=None, env=None, **kwargs):
+            """Fallback Field function that just returns the default value."""
             return default
         
         def validator(field_name, **kwargs):
+            """Fallback validator decorator that does nothing."""
             def decorator(func):
+                """
+                Decorator function implementation.
+                """
                 return func
             return decorator
 
+# Try to import YAML parser for configuration files
+# YAML provides human-readable configuration format
 try:
-    import yaml
+    import yaml  # YAML parsing for configuration files
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
 
-# Simple logger for config warnings
-import logging
+# Simple logger for configuration warnings and debugging
+import logging  # Structured logging for debugging and monitoring
 logger = logging.getLogger(__name__)
 
 
 class LLMProviderConfig:
-    """Configuration for LLM providers loaded from YAML."""
+    """
+    Configuration manager for LLM providers loaded from YAML files.
+    
+    This class handles:
+    - Loading provider configurations from YAML
+    - Environment variable substitution (${VAR_NAME} syntax)
+    - Provider availability checking
+    - Default configuration creation
+    
+    Design Pattern: Singleton-like behavior through module-level caching
+    """
     
     def __init__(self, config_path: str = "config/llm_providers.yaml"):
-        self.config_path = Path(config_path)
-        self._config = None
-        self.load_config()
+        """
+        Initialize the LLM provider configuration.
+        
+        Args:
+            config_path: Path to the YAML configuration file
+            
+        Technical Notes:
+        - Uses pathlib.Path for cross-platform path handling
+        - Implements fallback configuration if file doesn't exist
+        """
+        self.config_path = Path(config_path)  # Convert string to Path object for better handling
+        self._config = None  # Private attribute to store loaded configuration
+        self.load_config()  # Load configuration immediately upon initialization
     
     def load_config(self):
-        """Load configuration from YAML file."""
+        """
+        Load configuration from YAML file with comprehensive error handling.
+        
+        Process Flow:
+        1. Check if config file exists on filesystem
+        2. Parse YAML content safely (prevents code execution)
+        3. Replace environment variables using ${VAR} syntax
+        4. Create default config if file doesn't exist
+        
+        Error Handling:
+        - Graceful fallback to default configuration on any error
+        - Warning messages for debugging and troubleshooting
+        """
         try:
-            if self.config_path.exists():
+            if self.config_path.exists():  # Check if file exists before attempting to read
                 if not YAML_AVAILABLE:
                     logger.warning("PyYAML not available, using default configuration")
                     self._config = self._get_default_config()
                     return
                     
+                # Open file with UTF-8 encoding for international character support
                 with open(self.config_path, 'r', encoding='utf-8') as f:
+                    # yaml.safe_load prevents arbitrary code execution (security feature)
                     self._config = yaml.safe_load(f)
-                    # Replace environment variables in the config
+                    # Replace environment variables in the loaded configuration
                     self._config = self._replace_env_vars(self._config)
             else:
-                # Create default config if it doesn't exist
+                # Auto-create default configuration for first-time setup
                 self._create_default_config()
         except Exception as e:
+            # Catch all exceptions to ensure system continues working
             print(f"Warning: Could not load LLM config from {self.config_path}: {e}")
+            # Fallback to hardcoded default configuration
             self._config = self._get_default_config()
     
     def _replace_env_vars(self, obj):
-        """Recursively replace ${VAR} with environment variables."""
+        """
+        Recursively replace environment variables in configuration data structures.
+        
+        Supports ${VAR_NAME} syntax for environment variable substitution.
+        This allows configuration files to reference environment variables securely.
+        
+        Args:
+            obj: Configuration object (can be dict, list, string, or other types)
+            
+        Returns:
+            Object with environment variables replaced by their actual values
+            
+        Technical Implementation:
+        - Uses recursive traversal for nested data structures
+        - Pattern matching for ${VAR} syntax using string methods
+        - Safe fallback to empty string if environment variable doesn't exist
+        - Preserves original data types and structure
+        """
         if isinstance(obj, dict):
+            # Recursively process all dictionary key-value pairs
+            # Dictionary comprehension: {key: processed_value for key, value in items}
             return {k: self._replace_env_vars(v) for k, v in obj.items()}
         elif isinstance(obj, list):
+            # Recursively process all list items
+            # List comprehension: [processed_item for item in list]
             return [self._replace_env_vars(item) for item in obj]
         elif isinstance(obj, str) and obj.startswith("${") and obj.endswith("}"):
-            env_var = obj[2:-1]
+            # Extract environment variable name from ${VAR_NAME} format
+            env_var = obj[2:-1]  # String slicing: remove first 2 chars (${) and last 1 char (})
+            # os.getenv() safely retrieves environment variable with fallback to empty string
             return os.getenv(env_var, "")
+        # Return unchanged for all other data types (int, float, bool, etc.)
         return obj
     
     def _get_default_config(self):
@@ -139,7 +237,7 @@ class LLMProviderConfig:
                 yaml.dump(self._config, f, default_flow_style=False, allow_unicode=True)
         else:
             # Write as JSON if YAML not available
-            import json
+            import json  # JSON parsing and serialization
             with open(self.config_path.with_suffix('.json'), 'w', encoding='utf-8') as f:
                 json.dump(self._config, f, indent=2, ensure_ascii=False)
     
@@ -202,6 +300,9 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
     def __init__(self, **kwargs):
+        """
+          Init   function implementation.
+        """
         if PYDANTIC_AVAILABLE:
             super().__init__(**kwargs)
         else:
@@ -383,7 +484,7 @@ def load_config_from_file(config_file: Union[str, Path]) -> Dict[str, Any]:
     
     try:
         if config_path.suffix.lower() == '.json':
-            import json
+            import json  # JSON parsing and serialization
             with open(config_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         elif config_path.suffix.lower() in ['.yml', '.yaml']:
@@ -459,6 +560,9 @@ class ConfigManager:
     """Configuration manager for dynamic configuration updates."""
     
     def __init__(self):
+        """
+          Init   function implementation.
+        """
         self._settings = settings
         self._config_cache = {}
     
