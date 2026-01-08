@@ -465,8 +465,8 @@ class SparseRetriever(BaseRetriever):
         
         logger.info(f"Updated sparse index with {len(new_documents)} new documents")
 
-class 
-HybridRetriever(BaseRetriever):
+
+class HybridRetriever(BaseRetriever):
     """Hybrid retriever combining dense and sparse retrieval methods."""
     
     def __init__(

@@ -252,7 +252,9 @@ The system is now ready to handle the complete document processing workflow from
   - 添加性能基准测试
   - _需求: 5.4_
 
-- [-] 5. RAG检索引擎实现
+- [x] 5. RAG检索引擎实现
+
+
 
 
 
@@ -291,7 +293,8 @@ The system is now ready to handle the complete document processing workflow from
   - 添加多样性和新颖性考虑
   - _需求: 4.2, 4.4_
 
-- [-] 5.5 创建检索系统测试
+- [x] 5.5 创建检索系统测试
+
 
   - 编写检索准确性测试
   - 创建性能基准测试
