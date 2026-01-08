@@ -111,10 +111,10 @@ class User(BaseEntity):
     """User model for the learning system."""
     
     def __init__(self, username: str, email: str, full_name: Optional[str] = None, 
-        """
-          Init   function implementation.
-        """
                  learning_level: UserLevel = UserLevel.BEGINNER, **kwargs):
+        """
+          Initialize function implementation.
+        """
         if PYDANTIC_AVAILABLE:
             super().__init__(
                 username=username,
@@ -353,11 +353,11 @@ class LLMResponse(BaseModel):
     """LLM response model."""
     
     def __init__(self, content: str, model_name: str, provider: LLMProvider, 
-        """
-          Init   function implementation.
-        """
                  response_time: float, usage: Dict[str, int] = None, 
                  metadata: Dict[str, Any] = None, **kwargs):
+        """
+          Initialize function implementation.
+        """
         if PYDANTIC_AVAILABLE:
             super().__init__(
                 content=content,
